@@ -4,23 +4,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 from tqdm import tqdm as _tqdm
-import matplotlib.pyplot as plt
 import sys
 import gym
 import time
 import argparse
 import os
-import seaborn as sns
+import pickle
 
 # Personal imports.
 from model import NNPolicy
 from utils import run_episodes_policy_gradient, smooth
-sns.set()
 
 """
 TODO List:
-(1) Figure out if tqdm is necessary.
-(2) Figure out to measure model performance. (What metric do we use?)
+(1) Figure out if tqdm is necessary and what is does.
+(2) Figure out to measure model performance, so we can save best model/results. (i.e., What metric do we use?)
 (3) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
 """
 
@@ -43,10 +41,9 @@ my_envs = ["CartPole-v1", "Acrobot-v1", "MountainCar-v0"]
 
 # Directories to save output files in.
 figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('outputs', 'models')
+# Dictionaries we'll use to save results.
 best_performance = {env_name: -1.0 for env_name in my_envs}
-# Initialize figure for learning curve plots.
-fig = plt.figure(1)
-ax = fig.add_subplot(111)
+policy_gradients = {env_name: None for env_name in my_envs}
 
 for env_name in my_envs:
     # Make environment.
@@ -72,15 +69,17 @@ for env_name in my_envs:
                                                                      args.discount_factor,
                                                                      args.learn_rate)
 
-    # Plot learning curves.
-    ax.plot(smooth(episode_durations_policy_gradient, 10), label=env_name)
+    # The policy gradients will be saved and used to generate plots later.
+    smooth_policy_gradients = smooth(episode_durations_policy_gradient, 10)
+    # todo: add if statement to check model performance before saving
+    policy_gradients[env_name] = smooth_policy_gradients
 
     # Save best policy.
-    # todo: add if statement to check model performannce
+    # todo: add if statement to check model performance before saving
     torch.save(policy.state_dict(), os.path.join(models_path, "{}_model.pt".format(env_name.replace('-','_'))))
 
-# Finally, make legend and save aggregate learning curves plot.
-handles, labels = ax.get_legend_handles_labels()
-lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.2,0.6))
-plt.title('Episode durations per episode')
-plt.savefig(os.path.join(figures_path, 'training_curves'), bbox_extra_artists=(lgd,), bbox_inches='tight')
+# Save results.
+filename = os.path.join('outputs', 'policy_gradients','best_policy_gradients.pickle')
+with open(filename, 'wb') as handle:
+    pickle.dump(policy_gradients, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
