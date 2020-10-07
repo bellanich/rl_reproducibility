@@ -88,7 +88,7 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
                                  sampling_function=sample_episode):
     optimizer = optim.Adam(policy.parameters(), learn_rate)
 
-    episode_durations = []
+    episode_durations, rewards, losses = [], [], []
     rewards = []
     for i in range(num_episodes):
         # YOUR CODE HERE
@@ -104,5 +104,6 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
                   .format(i, len(episode[0]), '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
         episode_durations.append(len(episode[0]))
         rewards.append(sum(episode[1]))
+        losses.append(float(loss))
 
-    return episode_durations, rewards
+    return episode_durations, rewards, losses
