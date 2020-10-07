@@ -84,7 +84,7 @@ def compute_reinforce_loss(policy, episode, discount_factor):
     return loss
 
 
-def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, learn_rate,
+def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, learn_rate, sampling_freq=10,
                                  sampling_function=sample_episode):
     optimizer = optim.Adam(policy.parameters(), learn_rate)
 
@@ -99,11 +99,14 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
         loss.backward()
         optimizer.step()
 
-        if i % 10 == 0:
+        if i % sampling_freq == 0:
+            # Printing something just so we know what's going on.
             print("{2} Episode {0} finished after {1} steps"
                   .format(i, len(episode[0]), '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
-        episode_durations.append(len(episode[0]))
-        rewards.append(sum(episode[1]))
-        losses.append(float(loss))
+
+            # Save episode durations, rewards, and losses to plot later.
+            episode_durations.append(len(episode[0]))
+            rewards.append(sum(episode[1]))
+            losses.append(float(loss))
 
     return episode_durations, rewards, losses
