@@ -18,7 +18,9 @@ from utils import run_episodes_policy_gradient, smooth
 """
 TODO List:
 (1) Figure out if tqdm is necessary and what is does.
+ > tqdm is a progress bar, it's purely aesthetic but nice to have if your code takes long to run. https://tqdm.github.io/
 (2) Figure out to measure model performance, so we can save best model/results. (i.e., What metric do we use?)
+ > Jochem suggests accumulated reward per episode.
 (3) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
 """
 
@@ -44,6 +46,7 @@ figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('ou
 # Dictionaries we'll use to save results.
 best_performance = {env_name: -1.0 for env_name in my_envs}
 policy_gradients = {env_name: None for env_name in my_envs}
+rewards = {env_name: 0 for env_name in my_envs}
 
 for env_name in my_envs:
     # Make environment.
@@ -63,16 +66,18 @@ for env_name in my_envs:
 
     print("Training for {} episodes.".format(args.num_episodes))
     # Simulate N episodes. (Code from lab.)
-    episode_durations_policy_gradient = run_episodes_policy_gradient(policy,
-                                                                     env,
-                                                                     args.num_episodes,
-                                                                     args.discount_factor,
-                                                                     args.learn_rate)
+    episode_durations_policy_gradient, episode_rewards = run_episodes_policy_gradient(policy,
+                                                                                      env,
+                                                                                      args.num_episodes,
+                                                                                      args.discount_factor,
+                                                                                      args.learn_rate)
 
     # The policy gradients will be saved and used to generate plots later.
     smooth_policy_gradients = smooth(episode_durations_policy_gradient, 10)
+    smooth_rewards = smooth(episode_rewards, 10)
     # todo: add if statement to check model performance before saving
     policy_gradients[env_name] = smooth_policy_gradients
+    rewards[env_name] = smooth_rewards
 
     # Save best policy.
     # todo: add if statement to check model performance before saving
@@ -82,4 +87,8 @@ for env_name in my_envs:
 filename = os.path.join('outputs', 'policy_gradients','best_policy_gradients.pickle')
 with open(filename, 'wb') as handle:
     pickle.dump(policy_gradients, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+filename = os.path.join('outputs', 'rewards','best_rewards.pickle')
+with open(filename, 'wb') as handle:
+    pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
