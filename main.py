@@ -18,8 +18,11 @@ from configurations import grid_search_configurations
 
 """
 TODO List:
-(1) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
-(2) Integrate Natural Policy Gradients into coding framework.
+(1) Think critically about how we're currently saving the gradients. I just found code online, but haven't run any tests
+to make sure that it's correct.
+(2) Figure out if we even need a 'best_performance' dictionary anymore...
+(3) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
+(4) Integrate Natural Policy Gradients into coding framework.
 """
 
 def tqdm(*args, **kwargs):
@@ -67,6 +70,7 @@ for config in grid_search_configurations():
                                                                                                       config["learning_rate"],
                                                                                                       config["sampling_freq"])
 
+
     # The policy gradients will be saved and used to generate plots later.
     smooth_policy_gradients = smooth(episode_durations_policy_gradient, 10)
     smooth_rewards = smooth(episode_rewards, 10)
@@ -74,18 +78,27 @@ for config in grid_search_configurations():
     rewards[env_name] = smooth_rewards
 
     # Save best policy. Best policy saved by hyperparameter values.
-    model_filename = os.path.join(models_path, config['policy'], "{}_seed_{}_lr_{}_discount_{}.pt".format(config["environment"].replace('-', '_'),
-                                                                                                          config["seed"],
-                                                                                                          config["learning_rate"],
-                                                                                                          config["discount_factor"]))
+    policy_description = "{}_seed_{}_lr_{}_discount_{}.pt".format(config["environment"].replace('-', '_'),
+                                                                config["seed"],
+                                                                config["learning_rate"],
+                                                                config["discount_factor"])
+    model_filename = os.path.join(models_path, config['policy'], policy_description)
     torch.save(policy.state_dict(), model_filename)
+    # Save network gradients
+    # todo: This is just code found online. Need to think critically about it.
+    gradients = []
+    for param in policy.parameters():
+        gradients.append(param.grad.view(-1))
+    gradients = torch.cat(gradients)
+    torch.save(gradients, os.path.join('outputs', 'policy_gradients', config['policy'], policy_description))
+
+
+# filename = os.path.join('outputs', 'policy_gradients','policy_gradients.pickle')
+# with open(filename, 'wb') as handle:
+#     pickle.dump(policy_gradients, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # Save results.
-filename = os.path.join('outputs', 'policy_gradients','best_policy_gradients.pickle')
-with open(filename, 'wb') as handle:
-    pickle.dump(policy_gradients, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-filename = os.path.join('outputs', 'rewards','best_rewards.pickle')
+filename = os.path.join('outputs', 'rewards','rewards.pickle')
 with open(filename, 'wb') as handle:
     pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
