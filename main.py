@@ -48,12 +48,9 @@ for config in grid_search_configurations():
     torch.backends.cudnn.benchmark = False
 
     # Finally, initialize network. (Needs to be reinitalized, because input dim size varies with environment.
-    if config["policy"] == "gpomdp":
-        policy = NNPolicy(input_size=env.observation_space.shape[0],
-                        output_size=env.action_space.n,
-                        num_hidden=config["hidden_layer"])
-    else:
-        raise NotImplementedError
+    policy = NNPolicy(input_size=env.observation_space.shape[0],
+                    output_size=env.action_space.n,
+                    num_hidden=config["hidden_layer"])
 
     print("Training for {} episodes.".format(config["num_episodes"]))
     # Simulate N episodes. (Code from lab.)
@@ -62,6 +59,7 @@ for config in grid_search_configurations():
                                                  config["num_episodes"],
                                                  config["discount_factor"],
                                                  config["learning_rate"],
+                                                 config["policy"],
                                                  config["sampling_freq"])
     durations, rewards, losses, gradients = episodes_data
 

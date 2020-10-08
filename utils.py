@@ -51,7 +51,7 @@ def sample_episode(env, policy):
     return states, actions, rewards, dones
 
 
-def compute_reinforce_loss(policy, episode, discount_factor):
+def compute_gpomdp_loss(policy, episode, discount_factor):
     """
     Computes reinforce loss for given episode.
 
@@ -84,7 +84,35 @@ def compute_reinforce_loss(policy, episode, discount_factor):
     return loss
 
 
-def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, learn_rate, sampling_freq=10,
+def compute_reinforce_loss(policy, episode, discount_factor):
+    """
+    Computes reinforce loss for given episode.
+
+    Args:
+        policy: A policy which allows us to get probabilities of actions in states with its get_probs method.
+
+    Returns:
+        loss: reinforce loss
+    """
+    # Compute the reinforce loss
+    # Make sure that your function runs in LINEAR TIME
+    # Note that the rewards/returns should be maximized 
+    # while the loss should be minimized so you need a - somewhere
+    
+    # YOUR CODE HERE
+    states, actions, rewards, dones = episode
+    rewards = rewards.squeeze()
+    G = torch.zeros_like(rewards)
+    for t in reversed(range(rewards.shape[0])):
+        G[t] = rewards[t] + ((discount_factor * G[t+1]) if t+1<rewards.shape[0] else 0)
+    
+    action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
+    loss = - (action_probs * G[0]).sum()
+    return loss
+
+
+def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, learn_rate, 
+                                 loss_type, sampling_freq=10, 
                                  sampling_function=sample_episode):
     optimizer = optim.Adam(policy.parameters(), learn_rate)
 
@@ -94,7 +122,10 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
     for i in range(num_episodes):
         # YOUR CODE HERE
         episode = sample_episode(env, policy)
-        loss = compute_reinforce_loss(policy, episode, discount_factor)
+        if loss_type == "reinfoce":
+            loss = compute_reinforce_loss(policy, episode, discount_factor)
+        elif loss_type == "gpomdp":
+            loss = compute_gpomdp_loss(policy, episode, discount_factor)
         loss.backward()
 
         if i % sampling_freq == 0:
