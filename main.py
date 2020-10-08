@@ -90,7 +90,7 @@ for config in grid_search_configurations():
     # todo: This is just code found online. Need to think critically about it.
     gradients = []
     for param in policy.parameters():
-        gradients.append(param.grad.data)
+        gradients.append(param.grad.view(-1))
     gradients = torch.cat(gradients)
     torch.save(gradients, os.path.join('outputs', 'policy_gradients', config['policy'], policy_description))
 
