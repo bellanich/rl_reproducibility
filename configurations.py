@@ -2,8 +2,8 @@
 DISCOUNT_FACTORS = [0.99]
 LEARNING_RATES = [0.001]
 SEEDS = [42]
-ENVIRONMENTS = ["CartPole-v1", "Acrobot-v1", "MountainCar-v0"] #  #  #Ant-v2
-POLICIES = ["gpomdp"] # Originally was 'gpomdb', but I'm pretty sure this was a typo.
+ENVIRONMENTS = ["CartPole-v1"] #  , "Acrobot-v1", "MountainCar-v0"
+POLICIES = ["gpomdp", "reinforce"]
 
 NUM_EPISODES = 50
 HIDDEN_LAYERS = 128
