@@ -54,15 +54,15 @@ for config in grid_search_configurations():
 
     print("Training for {} episodes.".format(config["num_episodes"]))
     # Simulate N episodes. (Code from lab.)
-    loss_func = compute_reinforce_loss if config["policy"] == "reinforce" else compute_gpomdp_loss
+    # todo: Decide what I should be passing through this function. Right now, it's ugly.
     episodes_data = run_episodes_policy_gradient(policy, 
                                                  env,
                                                  config["num_episodes"],
                                                  config["discount_factor"],
                                                  config["learning_rate"],
-                                                 loss_func,
+                                                 config,
                                                  config["sampling_freq"])
-    durations, rewards, losses, gradients = episodes_data
+    durations, rewards, losses = episodes_data
 
     # The policy gradients will be saved and used to generate plots later.
     smooth_policy_gradients = smooth(durations, 10)
@@ -76,7 +76,4 @@ for config in grid_search_configurations():
                                                                                   config["sampling_freq"])
     model_filename = os.path.join(models_path, config['policy'], policy_description)
     torch.save(policy.state_dict(), model_filename)
-
-    # Save network gradients
-    torch.save(gradients, os.path.join('outputs', 'policy_gradients', config['policy'], policy_description))
 

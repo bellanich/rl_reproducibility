@@ -7,6 +7,7 @@ import torch
 from torch import optim
 import numpy as np
 import sys
+import os
 
 # Smoothing function for nicer plots
 def smooth(x, N):
@@ -130,11 +131,15 @@ def eval_policy(policy, env, discount_factor):
 
 
 def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, learn_rate,
-                                 loss_function, sampling_freq=10,
+                                 config, sampling_freq=10,
                                  sampling_function=sample_episode):
 
+    # Define loss function using policy_name.
+    policy_name = config["policy"]
+    loss_function = compute_reinforce_loss if policy_name == "reinforce" else compute_gpomdp_loss
+
     optimizer = optim.Adam(policy.parameters(), learn_rate)
-    episode_durations, rewards, losses, gradients = list(), list(), list(), list()
+    episode_durations, rewards, losses = list(), list(), list()
 
     # Setting policy to be trained.
     policy.train()
@@ -142,8 +147,7 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
 
         episode = sample_episode(env, policy)
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
-        # The loss_function is a variable meant for loss functions. With the way it's currently coded, we need the same
-        #   input and outputs for this to work.
+        # With the way it's currently coded, we need the same input and outputs for this to work.
         loss = loss_function(policy, episode, discount_factor)
         loss.backward()
         optimizer.step()
@@ -151,7 +155,7 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
         # Validating (or "freezing" training of the model).
         if i % sampling_freq == 0:
             # Calling separate function to do validation. No gradients are taken, and
-            episode, loss, episode_gradients = eval_policy(policy, env, discount_factor)
+            episode, loss, current_gradients = eval_policy(policy, env, discount_factor)
 
             # Printing something just so we know what's going on.
             print("{2} Episode {0} finished after {1} steps"
@@ -160,10 +164,13 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
 
             # Save episode durations, rewards, and losses to plot later.
             episode_durations.append(len(episode[0])), rewards.append(sum(episode[1])), losses.append(float(loss))
-            print("Done. Things works this far.")
-            sys.exit(1)
-            # todo: Fix me. This isn't correct anymore!
-            gradients.append(torch.cat(episode_gradients))
+
+            # todo: Find a nice way to organize files when saving gradients dict for each sample.
+            raise NotImplementedError
+            gradients_filename = "{}_{}_seed_{}_lr_{}_discount_{}".format(config[env],
+                                                                          i,
+                                                                          config["discount_factor"])
+            np.savez_compressed(os.path.join('outputs', 'policy_gradients', policy_name), current_gradients)
 
 
-    return episode_durations, rewards, losses, torch.stack(gradients)
+    return episode_durations, rewards, losses #, torch.stack(gradients)
