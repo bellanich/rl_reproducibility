@@ -34,17 +34,9 @@ assert sys.version_info[:3] >= (3, 6, 0), "Make sure you have Python 3.6 install
 
 # Directories to save output files in.
 figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('outputs', 'models')
-# Dictionaries we'll use to save results.
-best_performance = {}
-policy_gradients = {}
-rewards = {}
 
 for config in grid_search_configurations():
     env_name = config["environment"]
-
-    best_performance[env_name] = -1
-    policy_gradients[env_name] = None
-    rewards[env_name] = 0
 
     # Make environment.
     env = gym.make(env_name)
@@ -65,42 +57,27 @@ for config in grid_search_configurations():
 
     print("Training for {} episodes.".format(config["num_episodes"]))
     # Simulate N episodes. (Code from lab.)
-    episode_durations_policy_gradient, episode_rewards, episode_losses = run_episodes_policy_gradient(policy,
-                                                                                                      env,
-                                                                                                      config["num_episodes"],
-                                                                                                      config["discount_factor"],
-                                                                                                      config["learning_rate"],
-                                                                                                      config["sampling_freq"])
-
+    episodes_data = run_episodes_policy_gradient(policy, 
+                                                 env,
+                                                 config["num_episodes"],
+                                                 config["discount_factor"],
+                                                 config["learning_rate"],
+                                                 config["sampling_freq"])
+    durations, rewards, losses, gradients = episodes_data
 
     # The policy gradients will be saved and used to generate plots later.
-    smooth_policy_gradients = smooth(episode_durations_policy_gradient, 10)
-    smooth_rewards = smooth(episode_rewards, 10)
-    policy_gradients[env_name] = smooth_policy_gradients
-    rewards[env_name] = smooth_rewards
+    smooth_policy_gradients = smooth(durations, 10)
+    smooth_rewards = smooth(rewards, 10)
 
     # Save best policy. Best policy saved by hyperparameter values.
-    policy_description = "{}_seed_{}_lr_{}_discount_{}.pt".format(config["environment"].replace('-', '_'),
-                                                                  config["seed"],
-                                                                  config["learning_rate"],
-                                                                  config["discount_factor"])
+    policy_description = "{}_seed_{}_lr_{}_discount_{}_samplingfreq_{}.pt".format(config["environment"].replace('-', '_'),
+                                                                                  config["seed"],
+                                                                                  config["learning_rate"],
+                                                                                  config["discount_factor"],
+                                                                                  config["sampling_freq"])
     model_filename = os.path.join(models_path, config['policy'], policy_description)
     torch.save(policy.state_dict(), model_filename)
     # Save network gradients
-    # todo: This is just code found online. Need to think critically about it.
-    gradients = []
-    for param in policy.parameters():
-        gradients.append(param.grad.view(-1))
-    gradients = torch.cat(gradients)
+
     torch.save(gradients, os.path.join('outputs', 'policy_gradients', config['policy'], policy_description))
-
-
-# filename = os.path.join('outputs', 'policy_gradients','policy_gradients.pickle')
-# with open(filename, 'wb') as handle:
-#     pickle.dump(policy_gradients, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-# Save results.
-filename = os.path.join('outputs', 'rewards','rewards.pickle')
-with open(filename, 'wb') as handle:
-    pickle.dump(rewards, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
