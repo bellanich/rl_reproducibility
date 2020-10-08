@@ -89,14 +89,13 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
     optimizer = optim.Adam(policy.parameters(), learn_rate)
 
     episode_durations, rewards, losses, gradients = [], [], [], []
+    policy.eval()
+    optimizer.zero_grad()
     for i in range(num_episodes):
         # YOUR CODE HERE
         episode = sample_episode(env, policy)
         loss = compute_reinforce_loss(policy, episode, discount_factor)
-
-        optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
 
         if i % sampling_freq == 0:
             # Printing something just so we know what's going on.
@@ -112,5 +111,11 @@ def run_episodes_policy_gradient(policy, env, num_episodes, discount_factor, lea
             for param in policy.parameters():
                 episode_gradients.append(param.grad.view(-1))
             gradients.append(torch.cat(episode_gradients))
+
+            # Unfreeze the model temporarily and update weights.
+            policy.train()
+            optimizer.step()
+            optimizer.zero_grad()
+            policy.eval()
 
     return episode_durations, rewards, losses, torch.stack(gradients)
