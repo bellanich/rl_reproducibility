@@ -13,18 +13,14 @@ import pickle
 
 # Personal imports.
 from model import NNPolicy
-from utils import run_episodes_policy_gradient, smooth
+from utils import run_episodes_policy_gradient, smooth, compute_reinforce_loss, compute_gpomdp_loss
 from configurations import grid_search_configurations
 
 """
 TODO List:
-(1) Think critically about how we're currently saving the gradients. I just found code online, but haven't run any tests
-to make sure that it's correct.
- J: I checked it, I think this is correct. The view(-1) has all gradients lose dimensionality tho. We may want them to remain their original forms.
-(2) Figure out if we even need a 'best_performance' dictionary anymore...
- J: No I don't think so.
+(1) Debug policy validation
+(2) Switch between policies.
 (3) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
-(4) Integrate Natural Policy Gradients into coding framework.
 """
 
 def tqdm(*args, **kwargs):
@@ -36,11 +32,11 @@ assert sys.version_info[:3] >= (3, 6, 0), "Make sure you have Python 3.6 install
 figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('outputs', 'models')
 
 for config in grid_search_configurations():
-    env_name = config["environment"]
-
     # Make environment.
+    env_name = config["environment"]
     env = gym.make(env_name)
-    print("Initialize Network for {}.".format(env_name))
+
+    print("Initialize {} Network for {}.".format(config["policy"], env_name))
     # Now seed both the environment and network.
     torch.manual_seed(config["seed"])
     env.seed(config["seed"])
@@ -48,34 +44,37 @@ for config in grid_search_configurations():
     torch.backends.cudnn.benchmark = False
 
     # Finally, initialize network. (Needs to be reinitalized, because input dim size varies with environment.
-    policy = NNPolicy(input_size=env.observation_space.shape[0],
-                      output_size=env.action_space.n,
-                      num_hidden=config["hidden_layer"])
+    if config["policy"] == "gpomdp" or config["policy"] == "reinforce":
+        policy = NNPolicy(input_size=env.observation_space.shape[0],
+                        output_size=env.action_space.n,
+                        num_hidden=config["hidden_layer"])
+    else:
+        raise NotImplementedError
 
     print("Training for {} episodes.".format(config["num_episodes"]))
     # Simulate N episodes. (Code from lab.)
+    # todo: Decide what I should be passing through this function. Right now, it's ugly.
     episodes_data = run_episodes_policy_gradient(policy, 
                                                  env,
                                                  config["num_episodes"],
                                                  config["discount_factor"],
                                                  config["learning_rate"],
-                                                 config["policy"],
+                                                 config,
                                                  config["sampling_freq"])
-    durations, rewards, losses, gradients = episodes_data
+    durations, rewards, losses = episodes_data
 
     # The policy gradients will be saved and used to generate plots later.
     smooth_policy_gradients = smooth(durations, 10)
     smooth_rewards = smooth(rewards, 10)
 
-    # Save best policy. Best policy saved by hyperparameter values.
-    policy_description = "{}_seed_{}_lr_{}_discount_{}_samplingfreq_{}.pt".format(config["environment"].replace('-', '_'),
+    # Save trained policy. We save the policy under the name of its hyperparameter values.
+    policy_description = "{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
                                                                                   config["seed"],
                                                                                   config["learning_rate"],
                                                                                   config["discount_factor"],
                                                                                   config["sampling_freq"])
     model_filename = os.path.join(models_path, config['policy'], policy_description)
-    torch.save(policy.state_dict(), model_filename)
-    # Save network gradients
-
-    torch.save(gradients, os.path.join('outputs', 'policy_gradients', config['policy'], policy_description))
+    torch.save(policy.state_dict(), model_filename + ".pt")
+    torch.save(rewards, model_filename + "_rewards")
+    torch.save(losses, model_filename + "_losses")
 
