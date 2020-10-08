@@ -49,8 +49,8 @@ for config in grid_search_configurations():
 
     # Finally, initialize network. (Needs to be reinitalized, because input dim size varies with environment.
     policy = NNPolicy(input_size=env.observation_space.shape[0],
-                    output_size=env.action_space.n,
-                    num_hidden=config["hidden_layer"])
+                      output_size=env.action_space.n,
+                      num_hidden=config["hidden_layer"])
 
     print("Training for {} episodes.".format(config["num_episodes"]))
     # Simulate N episodes. (Code from lab.)
