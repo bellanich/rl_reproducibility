@@ -20,7 +20,9 @@ from configurations import grid_search_configurations
 TODO List:
 (1) Think critically about how we're currently saving the gradients. I just found code online, but haven't run any tests
 to make sure that it's correct.
+ J: I checked it, I think this is correct. The view(-1) has all gradients lose dimensionality tho. We may want them to remain their original forms.
 (2) Figure out if we even need a 'best_performance' dictionary anymore...
+ J: No I don't think so.
 (3) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
 (4) Integrate Natural Policy Gradients into coding framework.
 """
@@ -79,16 +81,16 @@ for config in grid_search_configurations():
 
     # Save best policy. Best policy saved by hyperparameter values.
     policy_description = "{}_seed_{}_lr_{}_discount_{}.pt".format(config["environment"].replace('-', '_'),
-                                                                config["seed"],
-                                                                config["learning_rate"],
-                                                                config["discount_factor"])
+                                                                  config["seed"],
+                                                                  config["learning_rate"],
+                                                                  config["discount_factor"])
     model_filename = os.path.join(models_path, config['policy'], policy_description)
     torch.save(policy.state_dict(), model_filename)
     # Save network gradients
     # todo: This is just code found online. Need to think critically about it.
     gradients = []
     for param in policy.parameters():
-        gradients.append(param.grad.view(-1))
+        gradients.append(param.grad.data)
     gradients = torch.cat(gradients)
     torch.save(gradients, os.path.join('outputs', 'policy_gradients', config['policy'], policy_description))
 
