@@ -18,8 +18,12 @@ from configurations import grid_search_configurations
 
 """
 TODO List:
-(1) Debug policy validation
-(2) Switch between policies.
+(1) B: Double check that it actually makes more sense to just pass the all of the config dictionary to
+run_episodes_policy_gradient(). The way it's coded right now, the number of variables we would need to pass otherwise
+gets too annoying.
+
+(2) Verify what we're saving is actually the metrics we're interested in.
+
 (3) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
 """
 
@@ -53,14 +57,9 @@ for config in grid_search_configurations():
 
     print("Training for {} episodes.".format(config["num_episodes"]))
     # Simulate N episodes. (Code from lab.)
-    # todo: Decide what I should be passing through this function. Right now, it's ugly.
     episodes_data = run_episodes_policy_gradient(policy, 
                                                  env,
-                                                 config["num_episodes"],
-                                                 config["discount_factor"],
-                                                 config["learning_rate"],
-                                                 config,
-                                                 config["sampling_freq"])
+                                                 config)
     durations, rewards, losses = episodes_data
 
     # The policy gradients will be saved and used to generate plots later.
@@ -73,8 +72,11 @@ for config in grid_search_configurations():
                                                                                   config["learning_rate"],
                                                                                   config["discount_factor"],
                                                                                   config["sampling_freq"])
+
+    # Saving model
     model_filename = os.path.join(models_path, config['policy'], policy_description)
-    torch.save(policy.state_dict(), model_filename + ".pt")
-    torch.save(rewards, model_filename + "_rewards")
-    torch.save(losses, model_filename + "_losses")
+    torch.save(policy.state_dict(), "{}.pt".format(model_filename))
+    # Saving rewards and loss.
+    np.save(os.path.join('outputs', 'rewards', config['policy'],"{}_rewards".format(policy_description)), rewards)
+    np.save(os.path.join('outputs', 'losses', config['policy'], "{}_losses".format(policy_description)), losses)
 

@@ -10,7 +10,7 @@ Small script to generate learning curves from best training runs.
 """
 
 results_paths = [os.path.join('outputs', 'policy_gradients', 'best_policy_gradients.pickle'),
-                 os.path.join('outputs', 'rewards', 'best_rewards.pickle')]
+                 os.path.join('outputs', 'rewards', 'rewards.pickle')]
 save_paths = [os.path.join('outputs', 'figures', 'training_curves_gradients'),
               os.path.join('outputs', 'figures', 'training_curves_rewards')]
 

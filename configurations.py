@@ -2,12 +2,12 @@
 DISCOUNT_FACTORS = [0.99]
 LEARNING_RATES = [0.001]
 SEEDS = [42]
-ENVIRONMENTS = ["CartPole-v1"] #  , "Acrobot-v1", "MountainCar-v0"
+ENVIRONMENTS = ["CartPole-v1", "Acrobot-v1"] #  , , "MountainCar-v0"
 POLICIES = ["gpomdp", "reinforce"]
 
-NUM_EPISODES = 50
+NUM_EPISODES = 10
 HIDDEN_LAYERS = 128
-sampling_freq = 10
+sampling_freq = 2
 
 def grid_search_configurations():
     for env in ENVIRONMENTS:
