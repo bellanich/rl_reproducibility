@@ -4,7 +4,7 @@ LEARNING_RATES = [0.001]
 SEEDS = [42]
 ENVIRONMENTS = ["CartPole-v1", "Acrobot-v1"] # "MountainCar-v0"
 POLICIES = ["gpomdp"]  # Options: "gpomdp", "reinforce"
-BASELINES = ["random_baseline"]  # Options: None, random_baseline, normalized_baseline
+BASELINES = ["normalized_baseline"]  # Options: None, random_baseline, normalized_baseline
 
 NUM_EPISODES = 10
 HIDDEN_LAYERS = 128

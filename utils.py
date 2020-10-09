@@ -76,7 +76,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, baseline=None):
     # Use random policy as baseline.
     if baseline == "random_baseline":
         print("Save G for untrained model and subtract from G calculated above.")
-        raise NotImplemented
+        raise NotImplementedError
 
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
     loss = - (action_probs * G[0]).sum()
@@ -111,7 +111,7 @@ def compute_gpomdp_loss(policy, episode, discount_factor, baseline=None):
     # Use random policy as baseline.
     if baseline == "random_baseline":
         print("Save G for untrained model and subtract from G calculated above.")
-        raise NotImplemented
+        raise NotImplementedError
 
     # Calculate loss.
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
@@ -150,6 +150,9 @@ def run_episodes_policy_gradient(policy, env, config):
     policy_name = config["policy"]
     loss_function = compute_reinforce_loss if "reinforce" in policy_name else compute_gpomdp_loss
     baseline = config["baseline"]
+    # This makes sure that gradients get saved under different name if baseline is used.
+    policy_name = "{}_{}".format(policy_name, baseline) if baseline is not None else policy_name
+
 
     # Setting up for training.
     optimizer = optim.Adam(policy.parameters(), config["learning_rate"])
@@ -185,7 +188,7 @@ def run_episodes_policy_gradient(policy, env, config):
             episode_durations.append(len(episode[0])), rewards.append(sum(episode[1])), losses.append(float(avg_loss))
 
             # Saving policy gradients per 'validation' iteration.
-            gradients_path = os.path.join('outputs', 'policy_gradients', config["policy"], policy_description)
+            gradients_path = os.path.join('outputs', 'policy_gradients', policy_name, policy_description)
             # Create dir if doesn't already exist.
             if not os.path.exists(gradients_path):
                 os.mkdir(gradients_path)

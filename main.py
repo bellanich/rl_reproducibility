@@ -48,7 +48,7 @@ for config in grid_search_configurations():
     torch.backends.cudnn.benchmark = False
 
     # Finally, initialize network. (Needs to be reinitalized, because input dim size varies with environment.
-    acceptable_policies = ["gpomdp", "reinforce", "normalized_baseline"]
+    acceptable_policies = ["gpomdp", "reinforce"]
     if config["policy"] in acceptable_policies:
         policy = NNPolicy(input_size=env.observation_space.shape[0],
                         output_size=env.action_space.n,
@@ -75,9 +75,10 @@ for config in grid_search_configurations():
                                                                                   config["sampling_freq"])
 
     # Saving model
-    model_filename = os.path.join(models_path, config['policy'], policy_description)
+    policy_name = "{}_{}".format(config["policy"], config["baseline"]) if config["baseline"] is not None else config['policy']
+    model_filename = os.path.join(models_path, policy_name, policy_description)
     torch.save(policy.state_dict(), "{}.pt".format(model_filename))
     # Saving rewards and loss.
-    np.save(os.path.join('outputs', 'rewards', config['policy'],"{}_rewards".format(policy_description)), rewards)
-    np.save(os.path.join('outputs', 'losses', config['policy'], "{}_losses".format(policy_description)), losses)
+    np.save(os.path.join('outputs', 'rewards', policy_name,"{}_rewards".format(policy_description)), rewards)
+    np.save(os.path.join('outputs', 'losses', policy_name, "{}_losses".format(policy_description)), losses)
 
