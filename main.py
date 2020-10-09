@@ -77,6 +77,6 @@ for config in grid_search_configurations():
     model_filename = os.path.join(models_path, config['policy'], policy_description)
     torch.save(policy.state_dict(), "{}.pt".format(model_filename))
     # Saving rewards and loss.
-    np.save(os.path.join('outputs', 'rewards', config['policy'],"{}_rewards".format(policy_description)), rewards)
+    np.save(os.path.join('outputs', 'rewards', config['policy'], "{}_rewards".format(policy_description)), rewards)
     np.save(os.path.join('outputs', 'losses', config['policy'], "{}_losses".format(policy_description)), losses)
 

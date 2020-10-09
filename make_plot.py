@@ -9,28 +9,30 @@ sns.set()
 Small script to generate learning curves from best training runs.
 """
 
-results_paths = [os.path.join('outputs', 'policy_gradients', 'best_policy_gradients.pickle'),
-                 os.path.join('outputs', 'rewards', 'rewards.pickle')]
-save_paths = [os.path.join('outputs', 'figures', 'training_curves_gradients'),
-              os.path.join('outputs', 'figures', 'training_curves_rewards')]
+result_types = ['losses', 'rewards']
+figure_folder = os.path.join('outputs', 'figures')
 
-for results_path, save_path in zip(results_paths, save_paths):
+# Iterate over all result files in either output/losses or output/rewards
+for result_type in result_types:
+    result_folder = os.path.join('outputs', result_type)
+    for subdir, dirs, files in os.walk(result_folder):
+        for filename in files:
+            filepath = subdir + os.sep + filename
+            with open(filepath, 'rb') as handle:
+                results = np.load(handle)
+            
+            # Initialize figure for learning curve plots.
+            fig = plt.figure(1)
+            ax = fig.add_subplot(111)
 
-    # Load results saved from running main.py
-    with open(results_path, 'rb') as handle:
-        results = pickle.load(handle)
+            # Putting results into plot.
+            ax.plot(results)
 
-    # Initialize figure for learning curve plots.
-    fig = plt.figure(1)
-    ax = fig.add_subplot(111)
-
-    # Putting results into plot.
-    for env_name in results.keys():
-        ax.plot(results[env_name], label=env_name)
-
-    # Some tricks were used to get legend outside of plot without it getting cut off.
-    handles, labels = ax.get_legend_handles_labels()
-    lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.2,0.6))
-    plt.title('Episode durations per episode')
-    plt.savefig(save_path, bbox_extra_artists=(lgd,), bbox_inches='tight')
-    fig.clear()
+            # Some tricks were used to get legend outside of plot without it getting cut off.
+            handles, labels = ax.get_legend_handles_labels()
+            lgd = ax.legend(handles, labels, loc='upper center', bbox_to_anchor=(1.2,0.6))
+            plt.title(result_type)
+            plt.show()
+            save_file = os.path.join(figure_folder, filename[:-4] + '.png')
+            plt.savefig(save_file, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            fig.clear()

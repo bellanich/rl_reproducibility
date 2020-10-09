@@ -182,5 +182,4 @@ def run_episodes_policy_gradient(policy, env, config):
                 os.mkdir(gradients_path)
             np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
 
-
     return episode_durations, rewards, losses

@@ -5,9 +5,9 @@ SEEDS = [42]
 ENVIRONMENTS = ["CartPole-v1", "Acrobot-v1"] #  , , "MountainCar-v0"
 POLICIES = ["gpomdp", "reinforce"]
 
-NUM_EPISODES = 10
+NUM_EPISODES = 2000
 HIDDEN_LAYERS = 128
-sampling_freq = 2
+sampling_freq = NUM_EPISODES // 10
 
 def grid_search_configurations():
     for env in ENVIRONMENTS:
