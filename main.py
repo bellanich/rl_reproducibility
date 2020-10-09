@@ -24,7 +24,7 @@ gets too annoying.
 
 (2) Verify what we're saving is actually the metrics we're interested in.
 
-(3) Subtract out baseline from REINFORCE AND GPOMDP. Do additional tricks if necessary to stabilize performance.
+(3) B: Double check the two baselines and the way they're done makes sense.
 """
 
 def tqdm(*args, **kwargs):
@@ -48,7 +48,8 @@ for config in grid_search_configurations():
     torch.backends.cudnn.benchmark = False
 
     # Finally, initialize network. (Needs to be reinitalized, because input dim size varies with environment.
-    if config["policy"] == "gpomdp" or config["policy"] == "reinforce":
+    acceptable_policies = ["gpomdp", "reinforce"]
+    if config["policy"] in acceptable_policies:
         policy = NNPolicy(input_size=env.observation_space.shape[0],
                         output_size=env.action_space.n,
                         num_hidden=config["hidden_layer"])
@@ -74,7 +75,8 @@ for config in grid_search_configurations():
                                                                                   config["sampling_freq"])
 
     # Saving model
-    model_filename = os.path.join(models_path, config['policy'], policy_description)
+    policy_name = "{}_{}".format(config["policy"], config["baseline"]) if config["baseline"] is not None else config['policy']
+    model_filename = os.path.join(models_path, policy_name, policy_description)
     torch.save(policy.state_dict(), "{}.pt".format(model_filename))
     # Saving rewards and loss.
     np.save(os.path.join('outputs', 'rewards', config['policy'], "{}_rewards".format(policy_description)), rewards)
