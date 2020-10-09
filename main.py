@@ -40,7 +40,9 @@ for config in grid_search_configurations():
     env_name = config["environment"]
     env = gym.make(env_name)
 
-    print("Initialize {} Network for {}.".format(config["policy"], env_name))
+    print("Initializing the network for configuration:")
+    for key, value in config.items():
+        print(f'    {key:<15} {value}')
     # Now seed both the environment and network.
     torch.manual_seed(config["seed"])
     env.seed(config["seed"])
