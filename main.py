@@ -70,11 +70,13 @@ for config in grid_search_configurations():
     smooth_rewards = smooth(rewards, 10)
 
     # Save trained policy. We save the policy under the name of its hyperparameter values.
-    policy_description = "{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
-                                                                                  config["seed"],
-                                                                                  config["learning_rate"],
-                                                                                  config["discount_factor"],
-                                                                                  config["sampling_freq"])
+    policy_description = "{}_baseline_{}_{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["policy"],
+                                                                                config["baseline"],
+                                                                                config["environment"].replace('-', '_'),
+                                                                                config["seed"],
+                                                                                config["learning_rate"],
+                                                                                config["discount_factor"],
+                                                                                config["sampling_freq"])
 
     # Saving model
     policy_name = "{}_{}".format(config["policy"], config["baseline"]) if config["baseline"] is not None else config['policy']
