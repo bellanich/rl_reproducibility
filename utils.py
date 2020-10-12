@@ -157,11 +157,13 @@ def run_episodes_policy_gradient(policy, env, config):
     # Setting up for training.
     optimizer = optim.Adam(policy.parameters(), config["learning_rate"])
     episode_durations, rewards, losses = list(), list(), list()
-    policy_description = "{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
-                                                                                  config["seed"],
-                                                                                  config["learning_rate"],
-                                                                                  config["discount_factor"],
-                                                                                  config["sampling_freq"])
+    policy_description = "{}_baseline_{}_{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["policy"],
+                                                                                config["baseline"],
+                                                                                config["environment"].replace('-', '_'),
+                                                                                config["seed"],
+                                                                                config["learning_rate"],
+                                                                                config["discount_factor"],
+                                                                                config["sampling_freq"])
 
     # Setting policy to be trained.
     policy.train()
@@ -191,7 +193,7 @@ def run_episodes_policy_gradient(policy, env, config):
             gradients_path = os.path.join('outputs', 'policy_gradients', policy_name, policy_description)
             # Create dir if doesn't already exist.
             if not os.path.exists(gradients_path):
-                os.mkdir(gradients_path)
+                os.makedirs(gradients_path)
             np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
 
     return episode_durations, rewards, losses

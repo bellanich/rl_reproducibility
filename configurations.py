@@ -8,7 +8,7 @@ BASELINES = [None, "normalized_baseline"]  # Options: None, random_baseline, nor
 
 NUM_EPISODES = 2000
 HIDDEN_LAYERS = 128
-SAMPLING_FREQ = NUM_EPISODES // 10
+SAMPLING_FREQ = NUM_EPISODES // 4
 
 def grid_search_configurations():
     for env in ENVIRONMENTS:
