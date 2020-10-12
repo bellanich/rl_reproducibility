@@ -72,8 +72,9 @@ for config in grid_search_configurations():
     smooth_rewards = smooth(rewards, 10)
 
     # Save trained policy. We save the policy under the name of its hyperparameter values.
+    baseline_name = "_".join(config['baseline'].split('_')[:-1])
     policy_description = "{}_baseline_{}_{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["policy"],
-                                                                                config["baseline"],
+                                                                                baseline_name,
                                                                                 config["environment"].replace('-', '_'),
                                                                                 config["seed"],
                                                                                 config["learning_rate"],
