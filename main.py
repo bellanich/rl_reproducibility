@@ -13,18 +13,13 @@ import pickle
 
 # Personal imports.
 from model import NNPolicy
-from utils import run_episodes_policy_gradient, smooth, compute_reinforce_loss, compute_gpomdp_loss
+from utils import run_episodes_policy_gradient, smooth
 from configurations import grid_search_configurations
 
 """
 TODO List:
-(1) B: Double check that it actually makes more sense to just pass the all of the config dictionary to
-run_episodes_policy_gradient(). The way it's coded right now, the number of variables we would need to pass otherwise
-gets too annoying.
+(1) B: Debug sending tensors to gpu.
 
-(2) Verify what we're saving is actually the metrics we're interested in.
-
-(3) B: Double check the two baselines and the way they're done makes sense.
 """
 
 def tqdm(*args, **kwargs):
@@ -34,15 +29,22 @@ assert sys.version_info[:3] >= (3, 6, 0), "Make sure you have Python 3.6 install
 
 # Directories to save output files in.
 figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('outputs', 'models')
+# Check if gpu is available.
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 for config in grid_search_configurations():
     # Make environment.
     env_name = config["environment"]
     env = gym.make(env_name)
 
+    # Add device to config. (Device needs to be passed to any module where we initialize Torch tensors. Use config to
+    #   do so, since it means making less changes to the code.
+    config['device'] = device
+
     print("Initializing the network for configuration:")
     for key, value in config.items():
         print(f'    {key:<15} {value}')
+
     # Now seed both the environment and network.
     torch.manual_seed(config["seed"])
     env.seed(config["seed"])
@@ -54,7 +56,7 @@ for config in grid_search_configurations():
     if config["policy"] in acceptable_policies:
         policy = NNPolicy(input_size=env.observation_space.shape[0],
                         output_size=env.action_space.n,
-                        num_hidden=config["hidden_layer"])
+                        num_hidden=config["hidden_layer"]).to(device)
     else:
         raise NotImplementedError
 

@@ -14,7 +14,7 @@ def smooth(x, N):
     cumsum = np.cumsum(np.insert(x, 0, 0))
     return (cumsum[N:] - cumsum[:-N]) / float(N)
 
-def sample_episode(env, policy):
+def sample_episode(env, policy, device):
     """
     A sampling routine. Given environment and a policy samples one episode and returns states, actions, rewards
     and dones from environment's step function as tensors.
@@ -37,22 +37,22 @@ def sample_episode(env, policy):
     state = env.reset()
     while not done:
         # Get action using policy.
-        action = policy.sample_action(torch.Tensor(state))  # .item()
+        action = policy.sample_action(torch.Tensor(state).to(device))  # .item()
         next_state, reward, done, _ = env.step(action)
         # Append to lists
         states.append(state), actions.append(action), rewards.append(reward), dones.append(done)
         # Update to next state.
         state = next_state
 
-    states, actions, rewards = torch.Tensor(states), \
-                               torch.LongTensor(actions).unsqueeze(dim=1), \
-                               torch.Tensor(rewards).unsqueeze(dim=1)
+    states, actions, rewards = torch.Tensor(states).to(device), \
+                               torch.LongTensor(actions).unsqueeze(dim=1).to(device), \
+                               torch.Tensor(rewards).unsqueeze(dim=1).to(device)
 
-    dones = torch.Tensor(dones).unsqueeze(dim=1)
+    dones = torch.Tensor(dones).unsqueeze(dim=1).to(device)
     return states, actions, rewards, dones
 
 
-def compute_reinforce_loss(policy, episode, discount_factor, baseline=None):
+def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=None):
     """
     Computes reinforce loss for given episode.
 
@@ -65,7 +65,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, baseline=None):
     # Same as gpomdp function, only there's a slight difference in loss equation.
     states, actions, rewards, dones = episode
     rewards = rewards.squeeze()
-    G = torch.zeros_like(rewards)
+    G = torch.zeros_like(rewards).to(device)
     for t in reversed(range(rewards.shape[0])):
         G[t] = rewards[t] + ((discount_factor * G[t + 1]) if t + 1 < rewards.shape[0] else 0)
 
@@ -83,7 +83,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, baseline=None):
     return loss
 
 
-def compute_gpomdp_loss(policy, episode, discount_factor, baseline=None):
+def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None):
     """
     Computes reinforce loss for given episode.
 
@@ -98,7 +98,7 @@ def compute_gpomdp_loss(policy, episode, discount_factor, baseline=None):
 
     # Calculate rewards.
     rewards = rewards.squeeze()
-    G = torch.zeros_like(rewards)
+    G = torch.zeros_like(rewards).to(device)
     # Need to calculate loss using formula G_{t+1} = r_t + \gamma G_{t+1}. If statement makes sure that there isn't
     # an error when t=0. Otherwise, we'd get an error since there's no negative time step.
     for t in reversed(range(rewards.shape[0])):
@@ -124,7 +124,7 @@ def eval_policy(policy, env, config, loss_function):
     # Return gradients per episode
     episode_gradients, losses = dict(), list()
     for _ in range(config["num_episodes"]):
-        episode = sample_episode(env, policy)
+        episode = sample_episode(env, policy, config['device'])
         policy.zero_grad()  # We need to reset the optimizer gradients for each new run.
         loss = loss_function(policy, episode, config["discount_factor"], config["baseline"])
         loss.backward()
@@ -169,10 +169,10 @@ def run_episodes_policy_gradient(policy, env, config):
     policy.train()
     for i in range(config["num_episodes"]):
 
-        episode = sample_episode(env, policy)
+        episode = sample_episode(env, policy, config['device'])
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
         # With the way it's currently coded, we need the same input and outputs for this to work.
-        loss = loss_function(policy, episode, config["discount_factor"], baseline)
+        loss = loss_function(policy, episode, config["discount_factor"], config['device'], baseline)
         loss.backward()
         optimizer.step()
 
