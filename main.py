@@ -18,8 +18,6 @@ from configurations import grid_search_configurations
 
 """
 TODO List:
-(1) B: Debug sending tensors to gpu.
-
 """
 
 def tqdm(*args, **kwargs):
@@ -31,6 +29,8 @@ assert sys.version_info[:3] >= (3, 6, 0), "Make sure you have Python 3.6 install
 figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('outputs', 'models')
 # Check if gpu is available.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+print(torch.cuda.is_available())
 
 for config in grid_search_configurations():
     # Make environment.
@@ -84,6 +84,8 @@ for config in grid_search_configurations():
     # Saving model
     policy_name = "{}_{}".format(config["policy"], config["baseline"]) if config["baseline"] is not None else config['policy']
     model_filename = os.path.join(models_path, policy_name, policy_description)
+    if not os.path.exists(model_filename):
+        os.makedirs(model_filename)
     torch.save(policy.state_dict(), "{}.pt".format(model_filename))
     # Saving rewards and loss.
     np.save(os.path.join('outputs', 'rewards', config['policy'], "{}_rewards".format(policy_description)), rewards)
