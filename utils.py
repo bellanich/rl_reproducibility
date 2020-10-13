@@ -126,7 +126,7 @@ def eval_policy(policy, env, config, loss_function):
     for _ in range(config["num_episodes"]):
         episode = sample_episode(env, policy, config['device'])
         policy.zero_grad()  # We need to reset the optimizer gradients for each new run.
-        loss = loss_function(policy, episode, config["discount_factor"], config["baseline"])
+        loss = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
         loss.backward()
 
         # Save losses as a list.

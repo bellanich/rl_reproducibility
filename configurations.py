@@ -1,14 +1,14 @@
 
 DISCOUNT_FACTORS = [0.99]
 LEARNING_RATES = [0.001]
-SEEDS = [i for i in range(10)]
-ENVIRONMENTS = ["CartPole-v1", "Acrobot-v1", "MountainCar-v0"] 
-POLICIES = ["gpomdp"]  # Options: "gpomdp", "reinforce"
+SEEDS = [i for i in range(10, 20)]
+ENVIRONMENTS = ["CartPole-v1", "Acrobot-v1"] 
+POLICIES = ["reinforce", "gpomdp"]  # Options: "gpomdp", "reinforce"
 BASELINES = [None, "normalized_baseline"]  # Options: None, random_baseline, normalized_baseline
 
-NUM_EPISODES = 2000
+NUM_EPISODES = 10000
 HIDDEN_LAYERS = 128
-SAMPLING_FREQ = NUM_EPISODES // 4
+SAMPLING_FREQ = NUM_EPISODES // 10
 
 def grid_search_configurations():
     for env in ENVIRONMENTS:
@@ -17,6 +17,8 @@ def grid_search_configurations():
                 for df in DISCOUNT_FACTORS:
                     for seed in SEEDS:
                         for baseline in BASELINES:
+                            if policy == "reinforce" and baseline == "normalized_baseline":
+                                continue
                             config = {
                                 "environment" : env,
                                 "policy" : policy,
