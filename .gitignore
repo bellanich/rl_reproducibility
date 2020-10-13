@@ -11,6 +11,7 @@ __pycache__/
 .idea/
 __pycache__
 assignment_info
+dummy_results
 
 # C extensions
 *.so
