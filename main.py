@@ -62,17 +62,15 @@ for config in grid_search_configurations():
 
     print("Training for {} episodes.".format(config["num_episodes"]))
     # Simulate N episodes. (Code from lab.)
-    episodes_data = run_episodes_policy_gradient(policy, 
-                                                 env,
-                                                 config)
-    durations, rewards, losses = episodes_data
-
-    # The policy gradients will be saved and used to generate plots later.
-    smooth_policy_gradients = smooth(durations, 10)
-    smooth_rewards = smooth(rewards, 10)
+    trn_rewards, trn_losses = run_episodes_policy_gradient(policy, 
+                                                           env,
+                                                           config)
 
     # Save trained policy. We save the policy under the name of its hyperparameter values.
-    baseline_name = "_".join(config['baseline'].split('_')[:-1])
+    if config['baseline'] != None:
+        baseline_name = "_".join(config['baseline'].split('_')[:-1])
+    else:
+        baseline_name = config['baseline']
     policy_description = "{}_baseline_{}_{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["policy"],
                                                                                 baseline_name,
                                                                                 config["environment"].replace('-', '_'),
@@ -88,6 +86,6 @@ for config in grid_search_configurations():
         os.makedirs(model_filename)
     torch.save(policy.state_dict(), "{}.pt".format(model_filename))
     # Saving rewards and loss.
-    np.save(os.path.join('outputs', 'rewards', config['policy'], "{}_rewards".format(policy_description)), rewards)
-    np.save(os.path.join('outputs', 'losses', config['policy'], "{}_losses".format(policy_description)), losses)
+    np.save(os.path.join('outputs', 'rewards', config['policy'], "{}_rewards".format(policy_description)), trn_rewards)
+    np.save(os.path.join('outputs', 'losses', config['policy'], "{}_losses".format(policy_description)), trn_losses)
 

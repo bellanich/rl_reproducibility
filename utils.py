@@ -63,7 +63,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=No
         loss: reinforce loss
     """
     # Same as gpomdp function, only there's a slight difference in loss equation.
-    states, actions, rewards, dones = episode
+    states, actions, rewards, _ = episode
     rewards = rewards.squeeze()
     G = torch.zeros_like(rewards).to(device)
     for t in reversed(range(rewards.shape[0])):
@@ -80,7 +80,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=No
 
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
     loss = - (action_probs * G[0]).sum()
-    return loss
+    return loss, sum(rewards)
 
 
 def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None):
@@ -94,7 +94,7 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
         loss: reinforce loss
     """
     # YOUR CODE HERE
-    states, actions, rewards, dones = episode
+    states, actions, rewards, _ = episode
 
     # Calculate rewards.
     rewards = rewards.squeeze()
@@ -116,7 +116,7 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
     # Calculate loss.
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
     loss = - (action_probs * G).sum()
-    return loss
+    return loss, sum(rewards)
 
 
 def eval_policy(policy, env, config, loss_function):
@@ -126,7 +126,7 @@ def eval_policy(policy, env, config, loss_function):
     for _ in range(config["num_episodes"]):
         episode = sample_episode(env, policy, config['device'])
         policy.zero_grad()  # We need to reset the optimizer gradients for each new run.
-        loss = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
+        loss, _ = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
         loss.backward()
 
         # Save losses as a list.
@@ -153,10 +153,9 @@ def run_episodes_policy_gradient(policy, env, config):
     # This makes sure that gradients get saved under different name if baseline is used.
     policy_name = "{}_{}".format(policy_name, baseline) if baseline is not None else policy_name
 
-
     # Setting up for training.
     optimizer = optim.Adam(policy.parameters(), config["learning_rate"])
-    episode_durations, rewards, losses = list(), list(), list()
+    rewards, losses = list(), list()
     policy_description = "{}_baseline_{}_{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["policy"],
                                                                                 config["baseline"],
                                                                                 config["environment"].replace('-', '_'),
@@ -172,9 +171,11 @@ def run_episodes_policy_gradient(policy, env, config):
         episode = sample_episode(env, policy, config['device'])
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
         # With the way it's currently coded, we need the same input and outputs for this to work.
-        loss = loss_function(policy, episode, config["discount_factor"], config['device'], baseline)
+        loss, cum_reward = loss_function(policy, episode, config["discount_factor"], config['device'], baseline)
         loss.backward()
         optimizer.step()
+        rewards.append(float(cum_reward))
+        losses.append(float(loss))
 
         # Validating (or "freezing" training of the model).
         if i % config["sampling_freq"] == 0:
@@ -182,12 +183,8 @@ def run_episodes_policy_gradient(policy, env, config):
             episode, avg_loss, current_gradients = eval_policy(policy, env, config, loss_function)
 
             # Printing something just so we know what's going on.
-            print("{2} Episode {0} finished after {1} steps"
-                  .format(i, len(episode[0]), '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
-
-
-            # Save episode durations, rewards, and losses to visualize later.
-            episode_durations.append(len(episode[0])), rewards.append(sum(episode[1])), losses.append(float(avg_loss))
+            print("{2} Episode {0} had an average loss of {1} "
+                  .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
 
             # Saving policy gradients per 'validation' iteration.
             gradients_path = os.path.join('outputs', 'policy_gradients', policy_name, policy_description)
@@ -196,4 +193,4 @@ def run_episodes_policy_gradient(policy, env, config):
                 os.makedirs(gradients_path)
             np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
 
-    return episode_durations, rewards, losses
+    return rewards, losses
