@@ -123,7 +123,7 @@ def eval_policy(policy, env, config, loss_function):
 
     # Return gradients per episode
     episode_gradients, losses = dict(), list()
-    for _ in range(config["num_episodes"]):
+    for _ in range(config["sampling_freq"]):
         episode = sample_episode(env, policy, config['device'])
         policy.zero_grad()  # We need to reset the optimizer gradients for each new run.
         loss, _ = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
@@ -164,8 +164,9 @@ def run_episodes_policy_gradient(policy, env, config):
                                                                                 config["discount_factor"],
                                                                                 config["sampling_freq"])
 
-    # Setting policy to be trained.
     policy.train()
+    best_reward = -float('inf')
+    best_episode = -1
     for i in range(config["num_episodes"]):
 
         episode = sample_episode(env, policy, config['device'])
@@ -174,8 +175,16 @@ def run_episodes_policy_gradient(policy, env, config):
         loss, cum_reward = loss_function(policy, episode, config["discount_factor"], config['device'], baseline)
         loss.backward()
         optimizer.step()
+
         rewards.append(float(cum_reward))
         losses.append(float(loss))
+
+        if cum_reward > best_reward:
+            best_reward = cum_reward
+            best_episode = i
+        elif i - best_episode > config['sampling_freq']:
+            print(f"convergence is reached at episode {i}")
+            break
 
         # Validating (or "freezing" training of the model).
         if i % config["sampling_freq"] == 0:

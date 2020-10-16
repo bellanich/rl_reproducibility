@@ -53,9 +53,6 @@ def gen_gradients_files(root):
                 }
                 freeze_num = int(gradients_file.name.split('_')[1])
                 yield gradients_file.path, config, freeze_num
-            
-            if not baseline:
-                print(config)
 
 
 root = os.path.join('outputs', 'policy_gradients')
