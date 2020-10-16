@@ -182,7 +182,7 @@ def run_episodes_policy_gradient(policy, env, config):
         if cum_reward > best_reward:
             best_reward = cum_reward
             best_episode = i
-        elif i - best_episode > config['sampling_freq']:
+        elif i - best_episode > config['sampling_freq'] * 2:
             print(f"convergence is reached at episode {i}")
             break
 
