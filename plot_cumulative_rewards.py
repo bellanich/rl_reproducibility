@@ -118,9 +118,6 @@ def crop_rewards(rewards, rewards_padding=10):
 # for debugging todo: remove once done debugging.
 counter = 0
 
-# TODO: (1) Adjust plots somehow so we're only looking at the same number of points. Even if training intervals are
-#           different.
-
 print("Going through config.")
 for config, rewards in config2rewards.items():
     config = config._asdict()
@@ -129,12 +126,11 @@ for config, rewards in config2rewards.items():
     fig = plt.figure(1)
 
     # Reshaping rewards and defining x axis values.
-    # todo: cut off rewards plot once values of converged
     rewards = np.squeeze(rewards)
     rewards = crop_rewards(rewards)
     episodes = np.arange(rewards.shape[0])
 
-    # Stats. calculations
+    # Stats calculations
     standard_dev = rewards.std() # average = rewards.mean()
     plt.plot(episodes, rewards, label=config['policy'])
     plt.fill_between(episodes,
@@ -156,6 +152,7 @@ for config, rewards in config2rewards.items():
     # fig.savefig(os.path.join(save_path, policy_description), bbox_inches='tight')
     fig.clear()
     # sys.exit(1)
+    # todo: remove once debugging.
     counter += 1
     if counter > 4:
         break
