@@ -85,31 +85,10 @@ def pad_rewards_to_array(config2rewards):
 
     return config2rewards
 
-
-def crop_rewards(rewards, rewards_padding=10):
-    """
-    Function crops rewards array once values have convergence.
-
-    :param rewards: 'Raw' rewards array.
-    :param rewards_padding: Number of times the value is the same before we say it's converged.
-    :return: Cropped rewards array.
-    """
-    # Create intermediary array called shifted_rewards. We use this to figure out at what time step we may have
-    # converged to. The idea is that we can crop the rewards array efficiently/without using loops if we do it this way.
-    converged_val = np.ones_like(rewards) * rewards[-1]
-    # Shift rewards values such that it's zero once reward[i] == reward[-1]
-    shifted_rewards = rewards - converged_val
-
-    # Cut off all rewards at end of array
-    shifted_rewards = np.trim_zeros(shifted_rewards, 'b')  # Trim zeros that pad array.
-    # Add in rewards_padding to show results N elements after we've converged.
-    new_rewards_shape = shifted_rewards.shape[0] + rewards_padding
-    rewards = rewards[:new_rewards_shape]
-    return rewards
-
 root = os.path.join('..', 'outputs', 'rewards')
-save_path = os.path.join('..', 'outputs', 'figures', 'cumulative_rewards')
+save_path = os.path.join('..', 'outputs', 'figures', 'cumulative_rewards', 'single_runs')
 config2rewards = load_reward_files(root)
+# Repeat last value so we can clearly see that our result has converged.
 config2rewards = pad_rewards_to_array(config2rewards)
 
 print("Going through config.")
@@ -123,24 +102,17 @@ for config, rewards in config2rewards.items():
 
     # Reshaping rewards and defining x axis values.
     rewards = np.squeeze(rewards[0])
-
-    # Crops rewards if values converge.
-    rewards = crop_rewards(rewards)
     # Only smoothen rewards array if there are too many points.
     if rewards.shape[0] > 1e3:
         smooth_factor = np.floor(rewards.shape[0]/100).astype(int) # Make smoothing factor dynamic.
         rewards = smooth(rewards, N=smooth_factor)
     episodes = np.arange(rewards.shape[0])
 
-    # Stats calculations.
-    standard_dev = rewards.std() # average = rewards.mean()
+
+    plt.title('Cumulative Rewards')
     plt.plot(episodes, rewards, label=config['policy'])
 
-    # Save figure.
-    plt.title('Cumulative Rewards')
-    # Only show legend if we choose to show several results in one plot.
-    # plt.legend(bbox_to_anchor=(0.5, -0.15), loc='lower center', ncol=len(files_list), borderaxespad=0.)
-
+    # Saving figure.
     policy_description = "{}_baseline_{}_{}_lr_{}_discount_{}_sampling_freq_{}_seed{}.jpg".format(config["policy"],
                                                                                 config["baseline"],
                                                                                 config["environment"],
