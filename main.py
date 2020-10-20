@@ -10,11 +10,12 @@ import time
 import argparse
 import os
 import pickle
+from time import time
 
 # Personal imports.
 from model import NNPolicy
 from utils import run_episodes_policy_gradient, smooth
-from configurations import grid_search_configurations
+from configurations import grid_search_configurations, SEEDS
 
 """
 TODO List:
@@ -27,13 +28,23 @@ assert sys.version_info[:3] >= (3, 6, 0), "Make sure you have Python 3.6 install
 
 # Directories to save output files in.
 figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('outputs', 'models')
+for folder_path in (figures_path, models_path):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
 # Check if gpu is available.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 print(torch.cuda.is_available())
 
+timing_filepath = os.path.join('outputs', 
+                               f'timing_seed_{SEEDS[0]}_{SEEDS[-1]}.csv')
+with open(timing_filepath, 'w') as t_file:
+    t_file.write('policy,baseline,environment,seed,learning_rate,'
+                 + 'discount_factor,sampling_freq,time\n')
+
 for config in grid_search_configurations():
     # Make environment.
+    t_0 = time()
     env_name = config["environment"]
     env = gym.make(env_name)
 
@@ -86,6 +97,27 @@ for config in grid_search_configurations():
         os.makedirs(model_filename)
     torch.save(policy.state_dict(), "{}.pt".format(model_filename))
     # Saving rewards and loss.
-    np.save(os.path.join('outputs', 'rewards', config['policy'], "{}_rewards".format(policy_description)), trn_rewards)
-    np.save(os.path.join('outputs', 'losses', config['policy'], "{}_losses".format(policy_description)), trn_losses)
+    rewards_folder = os.path.join('outputs', 'rewards', config['policy'])
+    losses_folder = os.path.join('outputs', 'losses', config['policy'])
+    for save_folder in (rewards_folder, losses_folder):
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
+    np.save(os.path.join(rewards_folder, 
+                         "{}_rewards".format(policy_description)), 
+            trn_rewards)
+    np.save(os.path.join(losses_folder, 
+                         "{}_losses".format(policy_description)),
+            trn_losses)
 
+    time_data = [
+        str(config["policy"]),
+        str(baseline_name),
+        str(config["environment"].replace('-', '_')),
+        str(config["seed"]),
+        str(config["learning_rate"]),
+        str(config["discount_factor"]),
+        str(config["sampling_freq"]),
+        str(t_0 - time())
+    ]
+    with open(timing_filepath, 'a') as t_file:
+        t_file.write(','.join(time_data) + '\n')

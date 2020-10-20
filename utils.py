@@ -9,6 +9,12 @@ import numpy as np
 import sys
 import os
 
+# The number of episodes a model is evaluated for calculating the gradients.
+EP_DURING_EVAL = 150
+# The number of episodes after which a model will stop training if no better
+# reward was found.
+CONVERGENCE_THRESHOLD = 1000
+
 # Smoothing function for nicer plots
 def smooth(x, N):
     cumsum = np.cumsum(np.insert(x, 0, 0))
@@ -123,7 +129,7 @@ def eval_policy(policy, env, config, loss_function):
 
     # Return gradients per episode
     episode_gradients, losses = dict(), list()
-    for _ in range(config["sampling_freq"]):
+    for _ in range(EP_DURING_EVAL):
         episode = sample_episode(env, policy, config['device'])
         policy.zero_grad()  # We need to reset the optimizer gradients for each new run.
         loss, _ = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
@@ -182,7 +188,7 @@ def run_episodes_policy_gradient(policy, env, config):
         if cum_reward > best_reward:
             best_reward = cum_reward
             best_episode = i
-        elif i - best_episode > config['sampling_freq'] * 2:
+        elif i - best_episode >= CONVERGENCE_THRESHOLD:
             print(f"convergence is reached at episode {i}")
             break
 

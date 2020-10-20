@@ -151,8 +151,7 @@ for config, rewards in config2rewards.items():
                                                                                 config["discount_factor"],
                                                                                 config["sampling_freq"])
     # todo: once done debugging, start saving results again.
-    plt.show()
-    # fig.savefig(os.path.join(save_path, policy_description), bbox_inches='tight')
+    fig.savefig(os.path.join(save_path, policy_description), bbox_inches='tight')
     fig.clear()
     # sys.exit(1)
     # todo: remove once debugging.
