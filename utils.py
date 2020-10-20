@@ -17,8 +17,12 @@ CONVERGENCE_THRESHOLD = 2000
 
 # Smoothing function for nicer plots
 def smooth(x, N):
-    cumsum = np.cumsum(np.insert(x, 0, 0))
-    return (cumsum[N:] - cumsum[:-N]) / float(N)
+    cumsum = np.cumsum(x) # np.insert(x, 0, 0)
+    cumsum_late = np.concatenate([np.zeros((N,)+cumsum.shape[1:]), cumsum], axis=0)
+    div_facs = np.arange(cumsum.shape[0]) + 1
+    div_facs = np.minimum(div_facs, N)
+    # return (cumsum[N:] - cumsum[:-N]) / float(N)
+    return (cumsum - cumsum_late[:cumsum.shape[0]]) / div_facs
 
 def sample_episode(env, policy, device):
     """
