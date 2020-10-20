@@ -13,7 +13,7 @@ import os
 EP_DURING_EVAL = 150
 # The number of episodes after which a model will stop training if no better
 # reward was found.
-CONVERGENCE_THRESHOLD = 1000
+CONVERGENCE_THRESHOLD = 2000
 
 # Smoothing function for nicer plots
 def smooth(x, N):
