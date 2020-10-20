@@ -127,12 +127,15 @@ for config, rewards in config2rewards.items():
 
     # Reshaping rewards and defining x axis values.
     rewards = np.squeeze(rewards)
+    # Crops rewards if values of converged.
     rewards = crop_rewards(rewards)
+    # TODO: conditionally smooth the rewards array if it's long.
     episodes = np.arange(rewards.shape[0])
 
     # Stats calculations
     standard_dev = rewards.std() # average = rewards.mean()
     plt.plot(episodes, rewards, label=config['policy'])
+    # TODO: figure out what's going on here....it still doesn't look right.
     plt.fill_between(episodes,
                     (rewards - standard_dev),
                     (rewards + standard_dev), alpha=0.5)
