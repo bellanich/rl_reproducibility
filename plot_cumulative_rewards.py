@@ -9,7 +9,6 @@ sns.set()
 
 """
 Small script to generate learning curves from best training runs.
-
 """
 
 
@@ -25,7 +24,8 @@ def load_reward_files(root):
                                           "discount_factor",
                                           "hidden_layer",
                                           "sampling_freq",
-                                          "baseline"])
+                                          "baseline",
+                                          "seed"])
     config2rewards = defaultdict(list)
 
     # The top layer contains a map per model.
@@ -35,6 +35,7 @@ def load_reward_files(root):
 
         # Loop over all different configurations per model.
         for rewards_file in os.scandir(model_folder.path):
+
             filename = rewards_file.name.split('_')
             if rewards_file.is_dir() or filename[0] != model_folder.name:
                 continue
@@ -49,7 +50,8 @@ def load_reward_files(root):
                 discount_factor= float(filename[9]),
                 hidden_layer=    HIDDEN_LAYERS,
                 sampling_freq=   int(filename[12]),
-                baseline=        filename[1]
+                baseline=        filename[1],
+                seed =           filename[5]
             )
 
             reward = []
@@ -85,30 +87,59 @@ def pad_rewards_to_array(config2rewards):
 
 
 root = os.path.join('outputs', 'rewards')
-save_path = os.path.join('outputs', 'figures')
+save_path = os.path.join('outputs', 'figures', 'cumulative_rewards')
 config2rewards = load_reward_files(root)
 config2rewards = pad_rewards_to_array(config2rewards)
 
-# TODO: WRITE CODE HERE
-# We need to somehow group files by environment type and then loop through that when generating figures.
 
+def crop_rewards(rewards, rewards_padding=10):
+    """
+    Function crops rewards array once values have convergence.
+
+    :param rewards: 'Raw' rewards array.
+    :param rewards_padding: Number of times the value is the same before we say it's converged.
+    :return: Cropped rewards array.
+    """
+    # Create intermediary array called shifted_rewards. We use this to figure out at what time step we may have
+    # converged to. The idea is that we can crop the rewards array efficiently/without using loops if we do it this way.
+    converged_val = np.ones_like(rewards) * rewards[-1]
+    # Shift rewards values such that it's zero once reward[i] == reward[-1]
+    shifted_rewards = rewards - converged_val
+
+    # Cut off all rewards at end of array
+    shifted_rewards = np.trim_zeros(shifted_rewards, 'b')  # Trim zeros that pad array.
+    # Add in rewards_padding to show results N elements after we've converged.
+    new_rewards_shape = shifted_rewards.shape[0] + rewards_padding
+    print(new_rewards_shape)
+
+    rewards = rewards[:new_rewards_shape]
+    return rewards
+
+# for debugging todo: remove once done debugging.
+counter = 0
+
+# TODO: (1) Adjust plots somehow so we're only looking at the same number of points. Even if training intervals are
+#           different.
+
+print("Going through config.")
 for config, rewards in config2rewards.items():
     config = config._asdict()
 
-    # Initialize the one figure we'll put all of the plots in.
+    # Initializing figure.
     fig = plt.figure(1)
 
-    # TODO: LOAD STATS HERE.
-    # Once policy gradient statistics are calculated, then let's load this here
-    # Should replace variance variable.
-    variance = rewards.var(0)
-    average = rewards.mean(0)
-    episodes = np.arange(rewards.shape[1]) * int(config['sampling_freq']) # Use sample frequency to recreate the x-axis.
+    # Reshaping rewards and defining x axis values.
+    # todo: cut off rewards plot once values of converged
+    rewards = np.squeeze(rewards)
+    rewards = crop_rewards(rewards)
+    episodes = np.arange(rewards.shape[0])
 
-    plt.plot(episodes, average, label=config['policy'])
+    # Stats. calculations
+    standard_dev = rewards.std() # average = rewards.mean()
+    plt.plot(episodes, rewards, label=config['policy'])
     plt.fill_between(episodes,
-                    (average - variance),
-                    (average + variance), alpha=0.3)
+                    (rewards - standard_dev),
+                    (rewards + standard_dev), alpha=0.5)
 
     # Save figure.
     plt.title('Cumulative Rewards')
@@ -120,5 +151,12 @@ for config, rewards in config2rewards.items():
                                                                                 config["learning_rate"],
                                                                                 config["discount_factor"],
                                                                                 config["sampling_freq"])
-    fig.savefig(os.path.join(save_path, policy_description), bbox_inches='tight')
+    # todo: once done debugging, start saving results again.
+    plt.show()
+    # fig.savefig(os.path.join(save_path, policy_description), bbox_inches='tight')
     fig.clear()
+    # sys.exit(1)
+    counter += 1
+    if counter > 4:
+        break
+
