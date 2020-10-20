@@ -40,11 +40,12 @@ timing_filepath = os.path.join('outputs',
                                f'timing_seed_{SEEDS[0]}_{SEEDS[-1]}.csv')
 with open(timing_filepath, 'w') as t_file:
     t_file.write('policy,baseline,environment,seed,learning_rate,'
-                 + 'discount_factor,sampling_freq,time\n')
+                 + 'discount_factor,sampling_freq,episode_time,total_time\n')
 
+t_0 = time()
 for config in grid_search_configurations():
     # Make environment.
-    t_0 = time()
+    t_ep = time()
     env_name = config["environment"]
     env = gym.make(env_name)
 
@@ -117,7 +118,8 @@ for config in grid_search_configurations():
         str(config["learning_rate"]),
         str(config["discount_factor"]),
         str(config["sampling_freq"]),
-        str(t_0 - time())
+        str(int(time() - t_ep)),
+        str(int(time() - t_0))
     ]
     with open(timing_filepath, 'a') as t_file:
         t_file.write(','.join(time_data) + '\n')

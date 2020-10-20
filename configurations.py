@@ -1,6 +1,6 @@
 
 DISCOUNT_FACTORS = [0.90, 0.95, 0.99]
-LEARNING_RATES = [0.001, 0.0001, 0.005]
+LEARNING_RATES = [0.001, 0.0001, 0.01]
 SEEDS = [i for i in range(55, 60)]
 ENVIRONMENTS = ["CartPole-v1", "Acrobot-v1"] 
 POLICIES = ["reinforce", "gpomdp"]  # Options: "gpomdp", "reinforce"
@@ -8,7 +8,7 @@ BASELINES = [None, "normalized_baseline"]  # Options: None, random_baseline, nor
 
 NUM_EPISODES = 10000
 HIDDEN_LAYERS = 128
-SAMPLING_FREQ = 200
+SAMPLING_FREQ = 400
 
 def grid_search_configurations():
     for env in ENVIRONMENTS:
