@@ -10,7 +10,7 @@ import sys
 import os
 
 # The number of episodes a model is evaluated for calculating the gradients.
-EP_DURING_EVAL = 150
+EP_DURING_EVAL = 100
 # The number of episodes after which a model will stop training if no better
 # reward was found.
 CONVERGENCE_THRESHOLD = 2000
@@ -60,6 +60,18 @@ def sample_episode(env, policy, device):
 
     dones = torch.Tensor(dones).unsqueeze(dim=1).to(device)
     return states, actions, rewards, dones
+
+
+def initialize_dirs(dir_paths):
+    """
+    Baby function that initializes dir if it doesn't already exist.
+    :param dir_paths:
+    :return:
+    """
+    for save_folder in dir_paths:
+        # Create folder if it doesn't exist.
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
 
 
 def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=None):
@@ -132,15 +144,16 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
 def eval_policy(policy, env, config, loss_function):
 
     # Return gradients per episode
-    episode_gradients, losses = dict(), list()
+    episode_gradients, losses, rewards_list = dict(), list(), list()
+
     for _ in range(EP_DURING_EVAL):
         episode = sample_episode(env, policy, config['device'])
         policy.zero_grad()  # We need to reset the optimizer gradients for each new run.
-        loss, _ = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
+        loss, cum_reward = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
         loss.backward()
 
         # Save losses as a list.
-        losses.append(loss.item())
+        losses.append(loss.item()), rewards_list.append(cum_reward.item())
 
         # Extracting gradients from policy network.
         for name, param in policy.named_parameters():
@@ -149,30 +162,24 @@ def eval_policy(policy, env, config, loss_function):
             episode_gradients[name].append(param.grad.cpu().detach().view(-1))
 
     episode_gradients = {key: torch.stack(episode_gradients[key], dim=0).numpy() for key in episode_gradients}
-    average_loss = np.asarray(losses).mean()
-
-    return episode, average_loss, episode_gradients
+    average_loss, average_cum_reward = np.asarray(losses).mean(), np.asarray(rewards_list).mean()
+    return episode, average_loss, average_cum_reward, episode_gradients
 
 
 def run_episodes_policy_gradient(policy, env, config):
 
-    # Define loss function using policy_name.
-    policy_name = config["policy"]
-    loss_function = compute_reinforce_loss if "reinforce" in policy_name else compute_gpomdp_loss
-    baseline = config["baseline"]
     # This makes sure that gradients get saved under different name if baseline is used.
-    policy_name = "{}_{}".format(policy_name, baseline) if baseline is not None else policy_name
+    # policy_name = "{}_{}".format(policy_name, baseline) if baseline is not None else policy_name
 
     # Setting up for training.
     optimizer = optim.Adam(policy.parameters(), config["learning_rate"])
-    rewards, losses = list(), list()
-    policy_description = "{}_baseline_{}_{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["policy"],
-                                                                                config["baseline"],
-                                                                                config["environment"].replace('-', '_'),
-                                                                                config["seed"],
-                                                                                config["learning_rate"],
-                                                                                config["discount_factor"],
-                                                                                config["sampling_freq"])
+
+    # With the way the code is implemented, we only care about val reward and val losses for now.
+    val_rewards = {policy_name: list() for policy_name in config["policies"]}
+    val_losses = {policy_name: list() for policy_name in config["policies"]}
+
+    # Save training rewards/losses (gpomdp + whitening) only. Save if needed for debugging to or writing report.
+    model_rewards, model_losses = list(), list()
 
     policy.train()
     best_reward = -float('inf')
@@ -182,12 +189,12 @@ def run_episodes_policy_gradient(policy, env, config):
         episode = sample_episode(env, policy, config['device'])
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
         # With the way it's currently coded, we need the same input and outputs for this to work.
-        loss, cum_reward = loss_function(policy, episode, config["discount_factor"], config['device'], baseline)
+        loss, cum_reward = compute_gpomdp_loss(policy, episode, config["discount_factor"], config['device'],
+                                               baseline='normalized_baseline')
+
+        model_rewards.append(cum_reward.item()), model_losses.append(loss.item())
         loss.backward()
         optimizer.step()
-
-        rewards.append(float(cum_reward))
-        losses.append(float(loss))
 
         if cum_reward > best_reward:
             best_reward = cum_reward
@@ -198,18 +205,54 @@ def run_episodes_policy_gradient(policy, env, config):
 
         # Validating (or "freezing" training of the model).
         if i % config["sampling_freq"] == 0:
-            # Calling separate function to do validation. No gradients are taken, and
-            episode, avg_loss, current_gradients = eval_policy(policy, env, config, loss_function)
 
-            # Printing something just so we know what's going on.
-            print("{2} Episode {0} had an average loss of {1} "
-                  .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
+            # We validate the policies: 'gpomdp', 'reinforce', and 'gpomdp'+ whitening
+            for policy_name in config["policies"]:
 
-            # Saving policy gradients per 'validation' iteration.
-            gradients_path = os.path.join('outputs', 'policy_gradients', policy_name, policy_description)
-            # Create dir if doesn't already exist.
-            if not os.path.exists(gradients_path):
-                os.makedirs(gradients_path)
-            np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
+                # Define loss function by the policy.
+                validate_function = compute_reinforce_loss if "reinforce" in policy_name else compute_gpomdp_loss
+                config['baseline'] = 'normalized_baseline' if 'normalized' in policy_name else None
 
-    return rewards, losses
+                episode, avg_loss, cum_reward, current_gradients = eval_policy(policy, env, config, validate_function)
+
+                # Save average cum_reward and loss per validation run.
+                # Note cum_reward := average cum_reward observed over N runs during validation. Just renamed cum_rewards
+                #  so it fits nicely with rest of code.
+                val_rewards[policy_name], val_losses[policy_name] = cum_reward, avg_loss
+
+                # Printing something just so we know what's going on.
+                print("{2} Episode {0} had an average loss of {1} "
+                      .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
+
+                # Saving policy gradients per 'validation' iteration.
+                policy_description = "{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(policy_name,
+                                                                                            config["baseline"],
+                                                                                            config["environment"].replace('-', '_'),
+                                                                                            config["seed"],
+                                                                                            config["learning_rate"],
+                                                                                            config["discount_factor"],
+                                                                                            config["sampling_freq"])
+                gradients_path = os.path.join('outputs', 'policy_gradients', policy_name, policy_description)
+                initialize_dirs(dir_paths=[gradients_path])
+                np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
+
+    # Saving results.
+    # First, save rewards and losses associated with different policies.
+    save_paths = [os.path.join('outputs', 'rewards'), os.path.join('outputs', 'losses')]
+    initialize_dirs(dir_paths=save_paths)
+    my_results = [val_rewards, val_losses]
+    filename = "seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
+                                                                             config["seed"],
+                                                                             config["learning_rate"],
+                                                                             config["discount_factor"],
+                                                                             config["sampling_freq"])
+
+    for save_dir, my_dict in zip(save_paths, my_results):
+        np.savez_compressed(os.path.join(save_dir, f"{filename}_rewards"), my_dict)
+
+    # Then save model performance.
+    model_performance_path = os.path.join('outputs', 'model_performance')
+    initialize_dirs(dir_paths=[model_performance_path])
+    model_performance = (model_rewards, model_losses)
+    np.save(os.path.join(model_performance_path, filename), model_performance)
+    return val_rewards, val_losses, model_performance
