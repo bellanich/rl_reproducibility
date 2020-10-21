@@ -225,8 +225,10 @@ def run_episodes_policy_gradient(policy, env, config):
                 val_rewards[policy_name], val_losses[policy_name] = cum_reward, avg_loss
 
                 # Printing something just so we know what's going on.
-                print("{2} Episode {0} had an average loss of {1} "
-                      .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
+                print("Episode {0} {3} had an average loss of {1} and lasted for {2} steps."
+                      .format(i, round(avg_loss, 4), len(episode[0]), policy_name.upper()))
+                # print("{2} Episode {0} had an average loss of {1}"
+                #       .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m', policy_name))
 
                 # Saving policy gradients per 'validation' iteration.
                 policy_description = "{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(policy_name,
