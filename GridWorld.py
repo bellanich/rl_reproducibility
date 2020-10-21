@@ -48,7 +48,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
         # Grid World Structure.
         self.shape = shape
         self.nS, self.nA = np.prod(shape), 4
-        self.starting_state = 7
+        self.starting_state = 12
         self.terminal_states = [0, self.nS-1]
         self.penalty_states = [6, 19]
 
@@ -94,17 +94,14 @@ class GridworldEnv(discrete.DiscreteEnv): #
 
     def _step(self, action):
         assert self.action_space.contains(action)
-        # state = self.it.iterindex
-        state = self.current_state
-        print("Current state is,", self.current_state)
-        y, x = self.it.multi_index
 
-        # todo: update state with new action and change starting state condition!
+        state = self.current_state
+        # Get coordinates of where we are in the grid given our current stae.
+        y, x = np.argwhere(self.grid==self.current_state)[0]
 
         self.P[state] = {a : [] for a in range(self.nA)}
 
-        is_done = lambda s: s == 0 or s == (self.nS - 1)
-        # is_done = state in self.terminal_states
+        is_done = lambda s: s in self.terminal_states
 
         # Changes made here to rewards distribution.
         # There are three possible rewards: terminal state reward, penalty state reward, and regular state reward
@@ -121,16 +118,14 @@ class GridworldEnv(discrete.DiscreteEnv): #
             self.P[state][RIGHT] = [(1.0, state, reward, True)]
             self.P[state][DOWN] = [(1.0, state, reward, True)]
             self.P[state][LEFT] = [(1.0, state, reward, True)]
-            print("Done! Rewards are {}".format(reward))
-            sys.exit(1)
         # Not a terminal state
         else:
+            # Figure out agent's future states.
             ns_up = state if y == 0 else state - self.MAX_X
             ns_right = state if x == (self.MAX_X - 1) else state + 1
             ns_down = state if y == (self.MAX_Y - 1) else state + self.MAX_X
             ns_left = state if x == 0 else state - 1
             potential_future_states = [ns_up, ns_right, ns_down, ns_left]
-            print(potential_future_states)
 
             self.P[state][UP] = [(1.0, ns_up, reward, is_done(ns_up))]
             self.P[state][RIGHT] = [(1.0, ns_right, reward, is_done(ns_right))]
@@ -138,10 +133,9 @@ class GridworldEnv(discrete.DiscreteEnv): #
             self.P[state][LEFT] = [(1.0, ns_left, reward, is_done(ns_left))]
 
             # Go to next state.
-            print("My action is, ", action)
             self.current_state = potential_future_states[action]
 
-        return self._get_obs(self.current_state), reward, is_done(action), {}
+        return self._get_obs(self.current_state), reward, is_done(self.current_state), {}
 
 
     def _render(self, mode='human', close=False):

@@ -59,6 +59,7 @@ class NNPolicy(nn.Module):
         # Convert into tensor.
         actions = torch.ShortTensor(np.arange(0, output.size(0)))
         # Use torch.multinomial to sample action given the action probs.
+        # todo: figure out where errors are coming from...
         idx = output.multinomial(num_samples=1, replacement=True)
         action = actions[idx].item()
         return action

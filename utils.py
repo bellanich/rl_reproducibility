@@ -98,13 +98,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=No
 
     # Also called "whitening" the gradients.
     if baseline == "normalized_baseline":
-        print(G)
         G = (G - G.mean()) / G.std()
-
-    # Use random policy as baseline.
-    if baseline == "random_baseline":
-        print("Save G for untrained model and subtract from G calculated above.")
-        raise NotImplementedError
 
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
     loss = - (action_probs * G[0]).sum()
@@ -134,12 +128,8 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
 
     # Also called "whitening" the gradients.
     if baseline == "normalized_baseline":
-        G = (G - G.mean()) / G.std()
-
-    # Use random policy as baseline.
-    if baseline == "random_baseline":
-        print("Save G for untrained model and subtract from G calculated above.")
-        raise NotImplementedError
+        epsilon = 1e-5
+        G = (G - G.mean()) /(G.std() + epsilon)
 
     # Calculate loss.
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
@@ -193,12 +183,13 @@ def run_episodes_policy_gradient(policy, env, config):
     for i in range(config["num_episodes"]):
 
         episode = sample_episode(env, policy, config['device'])
-        print(len(episode[0]))
+        print('episode length', len(episode[0]))
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
         # With the way it's currently coded, we need the same input and outputs for this to work.
+        # todo: Figure out why the losses are zero for GridWorld.
+        sys.exit(1)
         loss, cum_reward = compute_gpomdp_loss(policy, episode, config["discount_factor"], config['device'],
                                                baseline='normalized_baseline')
-
         model_rewards.append(cum_reward.item()), model_losses.append(loss.item())
         loss.backward()
         optimizer.step()
