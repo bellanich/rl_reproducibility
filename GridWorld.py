@@ -34,7 +34,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
 
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, shape=[5,5], regular_reward=0.0, penalty=-1.0, final_reward=1.0):
+    def __init__(self, shape=[5,5], regular_reward=0.0, penalty=-1.0, final_reward=2.0):
         """
         This initializes the vars that we'll be using.
         :param shape: Shape of our grid world.
@@ -45,16 +45,20 @@ class GridworldEnv(discrete.DiscreteEnv): #
         if not isinstance(shape, (list, tuple)) or not len(shape) == 2:
             raise ValueError('shape argument must be a list/tuple of length 2')
 
-        # The variables that we'll be changing.
+        # Grid World Structure.
         self.shape = shape
+        self.nS, self.nA = np.prod(shape), 4
+        self.starting_state = 7
+        self.terminal_states = [0, self.nS-1]
+        self.penalty_states = [6, 19]
+
+        # Keep track of where we are.
+        self.current_state = self.starting_state
+
+        # Rewards distribution
         self.penalty = penalty
         self.final_reward = final_reward
-        # Hard-coded for consistency.
-        self.penalty_states = [6, 19]
         self.regular_reward = regular_reward
-
-        self.nS = np.prod(shape)
-        self.nA = 4
 
         self.MAX_Y, self.MAX_X = shape[0], shape[1]
 
@@ -81,21 +85,26 @@ class GridworldEnv(discrete.DiscreteEnv): #
         return self._reset()
 
     def _reset(self):
-        # For now, put agent in same state everytime.
-        initial_state = 7
-        return self._get_obs(initial_state)
+        # Reset to starting start.
+        self.current_state = self.starting_state
+        return self._get_obs(self.current_state)
 
     def step(self, action):
         return self._step(action)
 
     def _step(self, action):
         assert self.action_space.contains(action)
-        state = self.it.iterindex
+        # state = self.it.iterindex
+        state = self.current_state
+        print("Current state is,", self.current_state)
         y, x = self.it.multi_index
+
+        # todo: update state with new action and change starting state condition!
 
         self.P[state] = {a : [] for a in range(self.nA)}
 
         is_done = lambda s: s == 0 or s == (self.nS - 1)
+        # is_done = state in self.terminal_states
 
         # Changes made here to rewards distribution.
         # There are three possible rewards: terminal state reward, penalty state reward, and regular state reward
@@ -112,17 +121,27 @@ class GridworldEnv(discrete.DiscreteEnv): #
             self.P[state][RIGHT] = [(1.0, state, reward, True)]
             self.P[state][DOWN] = [(1.0, state, reward, True)]
             self.P[state][LEFT] = [(1.0, state, reward, True)]
+            print("Done! Rewards are {}".format(reward))
+            sys.exit(1)
         # Not a terminal state
         else:
             ns_up = state if y == 0 else state - self.MAX_X
             ns_right = state if x == (self.MAX_X - 1) else state + 1
             ns_down = state if y == (self.MAX_Y - 1) else state + self.MAX_X
             ns_left = state if x == 0 else state - 1
+            potential_future_states = [ns_up, ns_right, ns_down, ns_left]
+            print(potential_future_states)
+
             self.P[state][UP] = [(1.0, ns_up, reward, is_done(ns_up))]
             self.P[state][RIGHT] = [(1.0, ns_right, reward, is_done(ns_right))]
             self.P[state][DOWN] = [(1.0, ns_down, reward, is_done(ns_down))]
             self.P[state][LEFT] = [(1.0, ns_left, reward, is_done(ns_left))]
-        return self._get_obs(state), reward, is_done(action), {}
+
+            # Go to next state.
+            print("My action is, ", action)
+            self.current_state = potential_future_states[action]
+
+        return self._get_obs(self.current_state), reward, is_done(action), {}
 
 
     def _render(self, mode='human', close=False):

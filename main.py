@@ -16,7 +16,7 @@ from time import time
 from model import NNPolicy
 from utils import run_episodes_policy_gradient, initialize_dirs
 from configurations import grid_search_configurations, SEEDS
-from gridworld import GridworldEnv
+from GridWorld import GridworldEnv
 
 
 def tqdm(*args, **kwargs):

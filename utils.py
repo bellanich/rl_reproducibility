@@ -57,6 +57,7 @@ def sample_episode(env, policy, device):
         # Update to next state.
         state = next_state
 
+    # print("Rewards are, ", rewards)
     # print(states)
     states, actions, rewards = torch.Tensor(states).to(device), \
                                torch.LongTensor(actions).unsqueeze(dim=1).to(device), \
@@ -97,6 +98,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=No
 
     # Also called "whitening" the gradients.
     if baseline == "normalized_baseline":
+        print(G)
         G = (G - G.mean()) / G.std()
 
     # Use random policy as baseline.
@@ -191,6 +193,7 @@ def run_episodes_policy_gradient(policy, env, config):
     for i in range(config["num_episodes"]):
 
         episode = sample_episode(env, policy, config['device'])
+        print(len(episode[0]))
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
         # With the way it's currently coded, we need the same input and outputs for this to work.
         loss, cum_reward = compute_gpomdp_loss(policy, episode, config["discount_factor"], config['device'],
