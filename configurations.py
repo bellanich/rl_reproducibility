@@ -1,13 +1,13 @@
 
 DISCOUNT_FACTORS = [0.99] # 0.90, 0.95,
-LEARNING_RATES = [0.001] #  0.0001, 0.01
-SEEDS = [42] #i for i in range(55, 60)
-ENVIRONMENTS = ["CartPole-v1"]  # GridWorld , "Acrobot-v1"
-POLICIES = ["reinforce"]  # Options: "gpomdp", "reinforce", normalized_gpomdp
+LEARNING_RATES = [0.0001, 0.001, 0.01] #  0.0001, 0.01
+SEEDS = [i for i in range(50, 55)] #i for i in range(50, 60)
+ENVIRONMENTS = ["GridWorld", "CartPole-v1"]  # Options: GridWorld, CartPole-v1
+POLICIES = ["gpomdp", "reinforce", "normalized_gpomdp"]  # Options: "gpomdp",
 
-NUM_EPISODES = 5 # 10000
+NUM_EPISODES = 800 # 10000
 HIDDEN_LAYERS = 128
-SAMPLING_FREQ = 3 #100
+SAMPLING_FREQ = 100 #100
 
 def grid_search_configurations():
     for env in ENVIRONMENTS:
@@ -26,7 +26,7 @@ def grid_search_configurations():
                             "num_episodes" : NUM_EPISODES,
                             "hidden_layer" : HIDDEN_LAYERS,
                             "sampling_freq": SAMPLING_FREQ,
-                            # Model now only trains using best policy, but validate son different policies. Otherwise
+                            # Model now only trains using best policy, but validates on different policies. Otherwise
                             #  all our results will be random, since the model hasn't learned anything.
                             "policies": POLICIES
                         }
