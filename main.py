@@ -16,6 +16,7 @@ from time import time
 from model import NNPolicy
 from utils import run_episodes_policy_gradient, initialize_dirs
 from configurations import grid_search_configurations, SEEDS
+from gridworld import GridworldEnv
 
 
 def tqdm(*args, **kwargs):
@@ -41,7 +42,7 @@ for config in grid_search_configurations():
     t_ep = time()
     # Make environment.
     env_name = config["environment"]
-    env = gym.make(env_name)
+    env = gym.make(env_name) if env_name!= 'GridWorld' else GridworldEnv(shape=[5,5], penalty=0.0, final_reward=-10)
     config['device'] = device
 
     print("Initializing the network for configuration:")
@@ -58,7 +59,9 @@ for config in grid_search_configurations():
     #   model.
     acceptable_policies = ["gpomdp", "reinforce", "normalized_gpomdp"]
     if set(config["policies"]).issubset(acceptable_policies):
-        policy = NNPolicy(input_size=env.observation_space.shape[0],
+        # Since GridWorld is a discrete environment, we need to define the input size a bit differently than in CartPole.
+        input_dim = env.nS if env_name == 'GridWorld' else env.observation_space.shape[0]
+        policy = NNPolicy(input_size=input_dim,
                         output_size=env.action_space.n,
                         num_hidden=config["hidden_layer"]).to(device)
     else:

@@ -4,6 +4,7 @@ main script.
 """
 
 import torch
+import torch.nn.functional as F
 from torch import optim
 import numpy as np
 import sys
@@ -46,18 +47,21 @@ def sample_episode(env, policy, device):
     done = False
     state = env.reset()
     while not done:
+        # pytorch_state = F.one_hot(input=torch.LongTensor([state]).to(device), num_classes=25).float().squeeze(dim=0)
+        # print(pytorch_state.shape)
         # Get action using policy.
-        action = policy.sample_action(torch.Tensor(state).to(device))  # .item()
+        action = policy.sample_action(torch.Tensor(state).to(device)) #.item()
         next_state, reward, done, _ = env.step(action)
         # Append to lists
         states.append(state), actions.append(action), rewards.append(reward), dones.append(done)
         # Update to next state.
         state = next_state
 
+    # print(states)
     states, actions, rewards = torch.Tensor(states).to(device), \
                                torch.LongTensor(actions).unsqueeze(dim=1).to(device), \
                                torch.Tensor(rewards).unsqueeze(dim=1).to(device)
-
+    # print(states.shape, actions.shape, rewards.shape)
     dones = torch.Tensor(dones).unsqueeze(dim=1).to(device)
     return states, actions, rewards, dones
 
@@ -86,7 +90,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=No
     """
     # Same as gpomdp function, only there's a slight difference in loss equation.
     states, actions, rewards, _ = episode
-    rewards = rewards.squeeze()
+    rewards = rewards.squeeze(dim=-1)
     G = torch.zeros_like(rewards).to(device)
     for t in reversed(range(rewards.shape[0])):
         G[t] = rewards[t] + ((discount_factor * G[t + 1]) if t + 1 < rewards.shape[0] else 0)
@@ -119,7 +123,7 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
     states, actions, rewards, _ = episode
 
     # Calculate rewards.
-    rewards = rewards.squeeze()
+    rewards = rewards.squeeze(dim=-1)
     G = torch.zeros_like(rewards).to(device)
     # Need to calculate loss using formula G_{t+1} = r_t + \gamma G_{t+1}. If statement makes sure that there isn't
     # an error when t=0. Otherwise, we'd get an error since there's no negative time step.
