@@ -4,13 +4,22 @@ import seaborn as sns
 import pickle
 import os, sys, glob
 from collections import namedtuple, defaultdict
-from configurations import HIDDEN_LAYERS
-from utils import smooth
 sns.set()
+HIDDEN_LAYERS = 128
 
 """
 Small script to generate learning curves from best training runs.
 """
+
+# Smoothing function for nicer plots
+def smooth(x, N):
+    cumsum = np.cumsum(x) # np.insert(x, 0, 0)
+    cumsum_late = np.concatenate([np.zeros((N,)+cumsum.shape[1:]), cumsum], axis=0)
+    div_facs = np.arange(cumsum.shape[0]) + 1
+    div_facs = np.minimum(div_facs, N)
+    # return (cumsum[N:] - cumsum[:-N]) / float(N)
+    return (cumsum - cumsum_late[:cumsum.shape[0]]) / div_facs
+
 
 def load_reward_files(root):
     '''Load all reward arrays into a dictionary with configurations as keys.
@@ -84,7 +93,8 @@ def pad_rewards_to_array(config2rewards):
     return config2rewards
 
 root = os.path.join('..', 'outputs', 'rewards')
-save_path = os.path.join('..', 'outputs', 'figures', 'cumulative_rewards', 'averaged_over_seed')
+save_path = os.path.join('..', 'outputs', 'figures', 'cumulative_rewards',
+                         'averaged_over_seed')
 config2rewards = load_reward_files(root)
 # Repeat last value so we can clearly see that our result has converged.
 config2rewards = pad_rewards_to_array(config2rewards)

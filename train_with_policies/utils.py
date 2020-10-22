@@ -213,7 +213,8 @@ def run_episodes_policy_gradient(policy, env, config):
             # Save average cum_reward and loss per validation run.
             # Note cum_reward := average cum_reward observed over N runs during validation. Just renamed cum_rewards
             #  so it fits nicely with rest of code.
-            val_rewards[policy_name], val_losses[policy_name] = cum_reward, avg_loss
+            val_rewards[policy_name].append(cum_reward)
+            val_losses[policy_name].append(avg_loss)
 
             # Printing something just so we know what's going on.
             print("Episode {0} {3} had an average loss of {1} and lasted for {2} steps. The cumulative reward is {4}"
