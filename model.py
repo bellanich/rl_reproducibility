@@ -16,7 +16,8 @@ class NNPolicy(nn.Module):
             num_hidden = output_size
 
         self.l1 = nn.Linear(input_size, num_hidden)
-        self.l2 = nn.Linear(num_hidden, output_size)
+        if is_multilayer:
+            self.l2 = nn.Linear(num_hidden, output_size)
 
     def forward(self, x):
         """
