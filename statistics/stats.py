@@ -3,11 +3,12 @@ import pickle as pkl
 from scipy.stats import moment
 import sys
 import os
-from configurations import HIDDEN_LAYERS
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 plt.style.use('seaborn')
+
+HIDDEN_LAYERS = 128
 
 def create_plot(stats, env, stat):
     df = pd.DataFrame(columns=['algorithm','episode_number',stat])
@@ -96,7 +97,7 @@ def gen_gradients_files(root):
                 yield gradients_file.path, config, freeze_num
 
 
-root = os.path.join('outputs', 'policy_gradients')
+root = os.path.join('..', 'outputs', 'policy_gradients')
 stats = {}
 for gradients_file_path, config, freeze in gen_gradients_files(root):
     if not (config['learning_rate'] == BEST_LEARNING_RATE
