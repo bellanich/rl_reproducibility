@@ -47,8 +47,6 @@ def sample_episode(env, policy, device):
     done = False
     state = env.reset()
     while not done:
-        # pytorch_state = F.one_hot(input=torch.LongTensor([state]).to(device), num_classes=25).float().squeeze(dim=0)
-        # print(pytorch_state.shape)
         # Get action using policy.
         action = policy.sample_action(torch.Tensor(state).to(device)) #.item()
         next_state, reward, done, _ = env.step(action)
@@ -57,12 +55,9 @@ def sample_episode(env, policy, device):
         # Update to next state.
         state = next_state
 
-    # print("Rewards are, ", rewards)
-    # print(states)
     states, actions, rewards = torch.Tensor(states).to(device), \
                                torch.LongTensor(actions).unsqueeze(dim=1).to(device), \
                                torch.Tensor(rewards).unsqueeze(dim=1).to(device)
-    # print(states.shape, actions.shape, rewards.shape)
     dones = torch.Tensor(dones).unsqueeze(dim=1).to(device)
     return states, actions, rewards, dones
 
@@ -183,11 +178,8 @@ def run_episodes_policy_gradient(policy, env, config):
     for i in range(config["num_episodes"]):
 
         episode = sample_episode(env, policy, config['device'])
-        print('episode length', len(episode[0]))
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
         # With the way it's currently coded, we need the same input and outputs for this to work.
-        # todo: Figure out why the losses are zero for GridWorld.
-        sys.exit(1)
         loss, cum_reward = compute_gpomdp_loss(policy, episode, config["discount_factor"], config['device'],
                                                baseline='normalized_baseline')
         model_rewards.append(cum_reward.item()), model_losses.append(loss.item())
@@ -219,8 +211,8 @@ def run_episodes_policy_gradient(policy, env, config):
                 val_rewards[policy_name], val_losses[policy_name] = cum_reward, avg_loss
 
                 # Printing something just so we know what's going on.
-                print("Episode {0} {3} had an average loss of {1} and lasted for {2} steps."
-                      .format(i, round(avg_loss, 4), len(episode[0]), policy_name.upper()))
+                print("Episode {0} {3} had an average loss of {1} and lasted for {2} steps. The cumulative reward is {4}"
+                      .format(i, round(avg_loss, 4), len(episode[0]), policy_name.upper(), cum_reward))
                 # print("{2} Episode {0} had an average loss of {1}"
                 #       .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m', policy_name))
 

@@ -42,7 +42,7 @@ for config in grid_search_configurations():
     t_ep = time()
     # Make environment.
     env_name = config["environment"]
-    env = gym.make(env_name) if env_name!= 'GridWorld' else GridworldEnv(shape=[5,5], penalty=0.0, final_reward=-10)
+    env = gym.make(env_name) if env_name!= 'GridWorld' else GridworldEnv(shape=[5,5])
     config['device'] = device
 
     print("Initializing the network for configuration:")

@@ -51,7 +51,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
         self.starting_state = 12
         self.next_state = None
         self.terminal_states = [0, self.nS-1]
-        self.penalty_states = [6, 19]
+        self.penalty_states = [6, 10, 11, 20, 19]
 
         # Keep track of where we are.
         self.current_state = self.starting_state
@@ -93,23 +93,14 @@ class GridworldEnv(discrete.DiscreteEnv): #
     def _step(self, action):
         assert self.action_space.contains(action)
 
-        self.current_state = self.starting_state if self.next_state is None else self.next_state
+        # self.current_state = self.starting_state if self.next_state is None else self.next_state
         # Get coordinates of where we are in the grid given our current state.
         y, x = np.argwhere(self.grid==self.current_state)[0]
 
         self.P[self.current_state] = {a : [] for a in range(self.nA)}
 
         is_done = lambda s: s in self.terminal_states
-
-        # Changes made here to rewards distribution.
-        # There are three possible rewards: terminal state reward, penalty state reward, and regular state reward.
         done = is_done(self.current_state)
-        # if done:
-        #     reward = self.final_reward
-        # elif self.current_state in self.penalty_states:
-        #     reward = self.penalty
-        # else:
-        #     reward = self.regular_reward
 
         # We've reached the terminal state, so let's reset our self.next_state to None. (Otherwise, we won't restart
         #   at our starting point with the way the code is written.)
@@ -126,9 +117,11 @@ class GridworldEnv(discrete.DiscreteEnv): #
             potential_future_states = [ns_up, ns_right, ns_down, ns_left]
 
             self.next_state = potential_future_states[action]
-            reward = self.penalty if self.next_state in self.terminal_states else self.regular_reward
+            # Base reward on future state. Penalize if reward ends up in penalty state.
+            reward = self.penalty if self.next_state in self.penalty_states else self.regular_reward
 
-        # Return current state info.
+        # Change current state to the next state.
+        self.current_state = self.starting_state if self.next_state is None else self.next_state
         return self._get_obs(self.current_state), reward, done, {}
 
 
