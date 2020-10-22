@@ -34,7 +34,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
 
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, shape=[5,5], regular_reward=0.0, penalty=-1.0, final_reward=2.0):
+    def __init__(self, shape=[5,5], regular_reward=0.0, penalty=-1.0, final_reward=2.0, max_steps=100):
         """
         This initializes the vars that we'll be using.
         :param shape: Shape of our grid world.
@@ -52,6 +52,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
         self.next_state = None
         self.terminal_states = [0, self.nS-1]
         self.penalty_states = [5, 11, 18]
+        self.max_steps = 100
 
         # Keep track of where we are.
         self.current_state = self.starting_state
@@ -86,6 +87,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
     def _reset(self):
         # Reset to starting start.
         self.current_state = self.starting_state
+        self.num_steps = 0
         return self._get_obs(self.current_state)
 
     def step(self, action):
@@ -94,6 +96,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
 
     def _step(self, action):
         assert self.action_space.contains(action)
+        self.num_steps += 1
 
         # self.current_state = self.starting_state if self.next_state is None else self.next_state
         # Get coordinates of where we are in the grid given our current state.
@@ -102,7 +105,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
         self.P[self.current_state] = {a : [] for a in range(self.nA)}
 
         is_done = lambda s: s in self.terminal_states
-        done = is_done(self.current_state)
+        done = is_done(self.current_state) or self.num_steps >= self.max_steps
 
         # We've reached the terminal state, so let's reset our self.next_state to None. (Otherwise, we won't restart
         #   at our starting point with the way the code is written.)
