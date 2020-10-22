@@ -2,11 +2,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import sys
 
 # Code is adapted from Lab 5.
 class NNPolicy(nn.Module):
-    def __init__(self, input_size, output_size, num_hidden=128):
+    def __init__(self, input_size, output_size, is_multilayer=True,num_hidden=128):
         nn.Module.__init__(self)
+
+        # Switch becomes False when we run GridWorld env.
+        self.is_multilayer = is_multilayer
+        # When single layer net, need self.l1 to output matrix in output_size
+        if not is_multilayer:
+            num_hidden = output_size
+
         self.l1 = nn.Linear(input_size, num_hidden)
         self.l2 = nn.Linear(num_hidden, output_size)
 
@@ -22,8 +30,9 @@ class NNPolicy(nn.Module):
         """
         # YOUR CODE HERE
         output = self.l1(x)
-        output = F.relu(output)
-        output = self.l2(output)
+        if self.is_multilayer:
+            output = F.relu(output)
+            output = self.l2(output)
         output = F.softmax(output, dim=-1)
         return output
 
@@ -59,7 +68,6 @@ class NNPolicy(nn.Module):
         # Convert into tensor.
         actions = torch.ShortTensor(np.arange(0, output.size(0)))
         # Use torch.multinomial to sample action given the action probs.
-        # todo: figure out where errors are coming from...
         idx = output.multinomial(num_samples=1, replacement=True)
         action = actions[idx].item()
         return action
