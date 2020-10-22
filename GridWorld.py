@@ -20,12 +20,12 @@ class GridworldEnv(discrete.DiscreteEnv): #
     For example, a 5x5 grid looks as follows:
 
     T   o   o  o   o
-    o  -1   o  o   o
-    o   o   x  o   o
+    -1  o   o  o   o
+    o  -1   x  o   o
     o   o   o  -1  o
     o   o   o  T   o
 
-    x is your position and T are the two terminal states.
+    x is your position and T are the two terminal states. -1 denotes penalty states.
 
     You can take actions in each direction (UP=0, RIGHT=1, DOWN=2, LEFT=3).
     Actions going off the edge leave you in your current state.
@@ -51,7 +51,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
         self.starting_state = 12
         self.next_state = None
         self.terminal_states = [0, self.nS-1]
-        self.penalty_states = [6, 10, 11, 20, 19]
+        self.penalty_states = [5, 11, 18]
 
         # Keep track of where we are.
         self.current_state = self.starting_state
@@ -65,7 +65,9 @@ class GridworldEnv(discrete.DiscreteEnv): #
 
         self.P = {}
         self.grid = np.arange(self.nS).reshape(self.shape)
-        self.it = np.nditer(self.grid, flags=['multi_index'])
+        # print("Grid is,\n", self.grid)
+        # print("Penalty states are", self.penalty_states)
+        # self.it = np.nditer(self.grid, flags=['multi_index'])
 
         # Initial state distribution is uniform
         isd = np.ones(self.nS) / self.nS
