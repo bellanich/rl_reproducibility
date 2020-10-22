@@ -60,8 +60,7 @@ for config in grid_search_configurations():
         if policy_name in acceptable_policies:
             # Since GridWorld is a discrete environment, we need to define the input size a bit differently than in CartPole.
             input_dim = env.nS if env_name == 'GridWorld' else env.observation_space.shape[0]
-            # todo: Figure out why errors happen when False.
-            is_multilayered = True if env_name == 'GridWorld' else True
+            is_multilayered = False if env_name == 'GridWorld' else True
             policy = NNPolicy(input_size=input_dim,
                             output_size=env.action_space.n,
                             is_multilayer=is_multilayered,
