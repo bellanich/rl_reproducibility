@@ -20,8 +20,8 @@ class GridworldEnv(discrete.DiscreteEnv): #
     For example, a 5x5 grid looks as follows:
 
     T   o   o  o   o
-    o  -1   x  o   o
-    o   o   o  o   o
+    o  -1   o  o   o
+    o   o   x  o   o
     o   o   o  -1  o
     o   o   o  T   o
 
@@ -70,10 +70,6 @@ class GridworldEnv(discrete.DiscreteEnv): #
         # Initial state distribution is uniform
         isd = np.ones(self.nS) / self.nS
 
-        # We expose the model of the environment for educational purposes
-        # This should not be used in any model-free learning algorithm
-        # self.P = P
-
         super(GridworldEnv, self).__init__(self.nS, self.nA, self.P, isd)
 
     # New function! Encode state as one-hot torch tensor.
@@ -93,9 +89,6 @@ class GridworldEnv(discrete.DiscreteEnv): #
     def step(self, action):
         return self._step(action)
 
-    # def is_done(self):
-    #     decision = self.current_state in self.terminal_states
-    #     return decision
 
     def _step(self, action):
         assert self.action_space.contains(action)
@@ -106,22 +99,23 @@ class GridworldEnv(discrete.DiscreteEnv): #
 
         self.P[self.current_state] = {a : [] for a in range(self.nA)}
 
-
         is_done = lambda s: s in self.terminal_states
 
         # Changes made here to rewards distribution.
-        # There are three possible rewards: terminal state reward, penalty state reward, and regular state reward
+        # There are three possible rewards: terminal state reward, penalty state reward, and regular state reward.
         done = is_done(self.current_state)
-        if done:
-            reward = self.final_reward
-        elif self.current_state in self.penalty_states:
-            reward = self.penalty
-        else:
-            reward = self.regular_reward
+        # if done:
+        #     reward = self.final_reward
+        # elif self.current_state in self.penalty_states:
+        #     reward = self.penalty
+        # else:
+        #     reward = self.regular_reward
 
-        # We've reached the terminal state, so let's reset our self.next_state to zero.
+        # We've reached the terminal state, so let's reset our self.next_state to None. (Otherwise, we won't restart
+        #   at our starting point with the way the code is written.)
         if done:
             self.next_state = None
+            reward = self.final_reward
         # Not a terminal state
         else:
             # Figure out agent's future states.
@@ -132,6 +126,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
             potential_future_states = [ns_up, ns_right, ns_down, ns_left]
 
             self.next_state = potential_future_states[action]
+            reward = self.penalty if self.next_state in self.terminal_states else self.regular_reward
 
         # Return current state info.
         return self._get_obs(self.current_state), reward, done, {}
@@ -203,7 +198,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
 if __name__ == "__main__":
     env = GridworldEnv()
     state = env.reset()
-    action_sequence = [3,3,0,0,0]
+    action_sequence = [3,0,3,0,0]
     print("State", state)
     for a in action_sequence:
         state, reward, is_done, _ = env.step(a)
