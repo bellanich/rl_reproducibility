@@ -1,6 +1,7 @@
 lab_instructions.pdf
 .vscode/
 outputs*
+*_run/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
