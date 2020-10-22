@@ -1,22 +1,16 @@
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch import optim
-from tqdm import tqdm as _tqdm
-import sys
-import gym
-import time
-import argparse
 import os
-import pickle
+import sys
 from time import time
+sys.path.append('..')
 
-# Personal imports.
-from model import NNPolicy
-from utils import run_episodes_policy_gradient, initialize_dirs
-from configurations import grid_search_configurations, SEEDS
+import gym
+import torch
+from tqdm import tqdm as _tqdm
+
 from GridWorld import GridworldEnv
+from model import NNPolicy
+from train_with_baseline_gpomdp.configurations import grid_search_configurations, SEEDS
+from train_with_baseline_gpomdp.utils import run_episodes_policy_gradient, initialize_dirs
 
 
 def tqdm(*args, **kwargs):
@@ -26,12 +20,13 @@ assert sys.version_info[:3] >= (3, 6, 0), "Make sure you have Python 3.6 install
 
 # Setting up files.
 # Directories to save output files in.
-figures_path, models_path = os.path.join('outputs', 'figures'), os.path.join('outputs', 'models')
+figures_path, models_path = os.path.join('train_with_baseline_gpomdp', 'outputs', 'figures'), \
+                            os.path.join('train_with_baseline_gpomdp', 'outputs', 'models')
 initialize_dirs(dir_paths=[figures_path, models_path])
 
 # Check if gpu is available.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-timing_filepath = os.path.join('outputs', f'timing_seed_{SEEDS[0]}_{SEEDS[-1]}.csv')
+timing_filepath = os.path.join('train_with_baseline_gpomdp', 'outputs', f'timing_seed_{SEEDS[0]}_{SEEDS[-1]}.csv')
 with open(timing_filepath, 'w') as t_file:
     t_file.write('policy,baseline,environment,seed,learning_rate,'
                  + 'discount_factor,sampling_freq,episode_time,total_time\n')
@@ -46,8 +41,10 @@ for config in grid_search_configurations():
     config['device'] = device
 
     print("Initializing the network for configuration:")
+    # Just so it prints nicely:
+    config["train_with_policies"] = False
     for key, value in config.items():
-        print(f'    {key:<15} {value}')
+        print(f'    {key:<20} {value}')
 
     # Now seed both the environment and network.
     torch.manual_seed(config["seed"])
@@ -61,8 +58,11 @@ for config in grid_search_configurations():
     if set(config["policies"]).issubset(acceptable_policies):
         # Since GridWorld is a discrete environment, we need to define the input size a bit differently than in CartPole.
         input_dim = env.nS if env_name == 'GridWorld' else env.observation_space.shape[0]
+        # todo: Figure out why errors happen when False.
+        is_multilayered = True if env_name == 'GridWorld' else True
         policy = NNPolicy(input_size=input_dim,
                         output_size=env.action_space.n,
+                        is_multilayer=is_multilayered,
                         num_hidden=config["hidden_layer"]).to(device)
     else:
         raise NotImplementedError
