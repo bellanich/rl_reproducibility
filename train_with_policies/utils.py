@@ -173,8 +173,8 @@ def run_episodes_policy_gradient(policy, env, config):
 
 
     # With the way the code is implemented, we only care about val reward and val losses for now.
-    val_rewards = {policy_name: list() for policy_name in config["policies"]}
-    val_losses = {policy_name: list() for policy_name in config["policies"]}
+    val_rewards = []
+    val_losses = []
 
     # Save training rewards/losses (gpomdp + whitening) only. Save if needed for debugging to or writing report.
     model_rewards, model_losses = list(), list()
@@ -213,8 +213,8 @@ def run_episodes_policy_gradient(policy, env, config):
             # Save average cum_reward and loss per validation run.
             # Note cum_reward := average cum_reward observed over N runs during validation. Just renamed cum_rewards
             #  so it fits nicely with rest of code.
-            val_rewards[policy_name].append(cum_reward)
-            val_losses[policy_name].append(avg_loss)
+            val_rewards.append(cum_reward)
+            val_losses.append(avg_loss)
 
             # Printing something just so we know what's going on.
             print("Episode {0} {3} had an average loss of {1} and lasted for {2} steps. The cumulative reward is {4}"
@@ -239,15 +239,11 @@ def run_episodes_policy_gradient(policy, env, config):
     save_paths = [os.path.join('train_with_policies', 'outputs', 'rewards'),
                   os.path.join('train_with_policies', 'outputs', 'losses')]
     initialize_dirs(dir_paths=save_paths)
-    my_results = [val_rewards, val_losses]
     filename = "seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
                                                                              config["seed"],
                                                                              config["learning_rate"],
                                                                              config["discount_factor"],
                                                                              config["sampling_freq"])
-
-    for save_dir, my_dict in zip(save_paths, my_results):
-        np.savez_compressed(os.path.join(save_dir, f"{filename}_rewards"), my_dict)
 
     # Then save model performance.
     model_performance_path = os.path.join('train_with_policies', 'outputs', 'model_performance')

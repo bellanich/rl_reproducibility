@@ -1,6 +1,7 @@
 import os
 import sys
 from time import time
+import numpy as np
 sys.path.append('..')
 
 import gym
@@ -52,6 +53,9 @@ for config in grid_search_configurations():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+    # Here our rewards and losses will be stored
+    rewards_dict, losses_dict = dict(), dict()
+
     # Now, loop over policy_names when training model.
     for policy_name in config['policies']:
         acceptable_policies = ["gpomdp", "reinforce", "normalized_gpomdp"]
@@ -88,6 +92,11 @@ for config in grid_search_configurations():
         initialize_dirs(dir_paths=[current_model_path])
         torch.save(policy.state_dict(), os.path.join(current_model_path, "{}.pt".format(model_description)))
 
+        # Store losses and rewards in the dictionary
+        rewards_dict[policy_name] = policy_rewards
+        losses_dict[policy_name] = policy_losses
+
+
     # Saving time it took for machine to run.
     time_data = [
         str(config["policies"]),
@@ -102,3 +111,16 @@ for config in grid_search_configurations():
 
     with open(timing_filepath, 'a') as t_file:
         t_file.write(','.join(time_data) + '\n')
+
+    # Save the losses and rewards
+    save_paths = [os.path.join('train_with_policies', 'outputs', 'rewards'),
+                  os.path.join('train_with_policies', 'outputs', 'losses')]
+    my_results = [rewards_dict, losses_dict]
+    filename = "seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
+                                                                            config["seed"],
+                                                                            config["learning_rate"],
+                                                                            config["discount_factor"],
+                                                                            config["sampling_freq"])
+
+    for save_dir, my_dict in zip(save_paths, my_results):
+        np.savez_compressed(os.path.join(save_dir, f"{filename}_rewards"), my_dict)
