@@ -49,6 +49,7 @@ class GridworldEnv(discrete.DiscreteEnv): #
         self.shape = shape
         self.nS, self.nA = np.prod(shape), 4
         self.starting_state = 12
+        self.next_state = None
         self.terminal_states = [0, self.nS-1]
         self.penalty_states = [6, 19]
 
@@ -92,82 +93,81 @@ class GridworldEnv(discrete.DiscreteEnv): #
     def step(self, action):
         return self._step(action)
 
+    # def is_done(self):
+    #     decision = self.current_state in self.terminal_states
+    #     return decision
+
     def _step(self, action):
         assert self.action_space.contains(action)
 
-        state = self.current_state
-        # Get coordinates of where we are in the grid given our current stae.
+        self.current_state = self.starting_state if self.next_state is None else self.next_state
+        # Get coordinates of where we are in the grid given our current state.
         y, x = np.argwhere(self.grid==self.current_state)[0]
 
-        self.P[state] = {a : [] for a in range(self.nA)}
+        self.P[self.current_state] = {a : [] for a in range(self.nA)}
+
 
         is_done = lambda s: s in self.terminal_states
 
         # Changes made here to rewards distribution.
         # There are three possible rewards: terminal state reward, penalty state reward, and regular state reward
-        if is_done(state):
+        done = is_done(self.current_state)
+        if done:
             reward = self.final_reward
-        elif state in self.penalty_states:
+        elif self.current_state in self.penalty_states:
             reward = self.penalty
         else:
             reward = self.regular_reward
 
-        # We're stuck in a terminal state
-        if is_done(state):
-            self.P[state][UP] = [(1.0, state, reward, True)]
-            self.P[state][RIGHT] = [(1.0, state, reward, True)]
-            self.P[state][DOWN] = [(1.0, state, reward, True)]
-            self.P[state][LEFT] = [(1.0, state, reward, True)]
+        # We've reached the terminal state, so let's reset our self.next_state to zero.
+        if done:
+            self.next_state = None
         # Not a terminal state
         else:
             # Figure out agent's future states.
-            ns_up = state if y == 0 else state - self.MAX_X
-            ns_right = state if x == (self.MAX_X - 1) else state + 1
-            ns_down = state if y == (self.MAX_Y - 1) else state + self.MAX_X
-            ns_left = state if x == 0 else state - 1
+            ns_up = self.current_state if y == 0 else self.current_state - self.MAX_X
+            ns_right = self.current_state if x == (self.MAX_X - 1) else self.current_state + 1
+            ns_down = self.current_state if y == (self.MAX_Y - 1) else self.current_state + self.MAX_X
+            ns_left = self.current_state if x == 0 else self.current_state - 1
             potential_future_states = [ns_up, ns_right, ns_down, ns_left]
 
-            self.P[state][UP] = [(1.0, ns_up, reward, is_done(ns_up))]
-            self.P[state][RIGHT] = [(1.0, ns_right, reward, is_done(ns_right))]
-            self.P[state][DOWN] = [(1.0, ns_down, reward, is_done(ns_down))]
-            self.P[state][LEFT] = [(1.0, ns_left, reward, is_done(ns_left))]
+            self.next_state = potential_future_states[action]
 
-            # Go to next state.
-            self.current_state = potential_future_states[action]
-
-        return self._get_obs(self.current_state), reward, is_done(self.current_state), {}
+        # Return current state info.
+        return self._get_obs(self.current_state), reward, done, {}
 
 
-    def _render(self, mode='human', close=False):
-        if close:
-            return
-
-        outfile = StringIO() if mode == 'ansi' else sys.stdout
-
-        grid = np.arange(self.nS).reshape(self.shape)
-        it = np.nditer(grid, flags=['multi_index'])
-        while not it.finished:
-            s = it.iterindex
-            y, x = it.multi_index
-
-            if self.s == s:
-                output = " x "
-            elif s == 0 or s == self.nS - 1:
-                output = " T "
-            else:
-                output = " o "
-
-            if x == 0:
-                output = output.lstrip() 
-            if x == self.shape[1] - 1:
-                output = output.rstrip()
-
-            outfile.write(output)
-
-            if x == self.shape[1] - 1:
-                outfile.write("\n")
-
-            it.iternext()
+    # Code that I don't think we need anymore.
+    # def _render(self, mode='human', close=False):
+    #     if close:
+    #         return
+    #
+    #     outfile = StringIO() if mode == 'ansi' else sys.stdout
+    #
+    #     grid = np.arange(self.nS).reshape(self.shape)
+    #     it = np.nditer(grid, flags=['multi_index'])
+    #     while not it.finished:
+    #         s = it.iterindex
+    #         y, x = it.multi_index
+    #
+    #         if self.s == s:
+    #             output = " x "
+    #         elif s == 0 or s == self.nS - 1:
+    #             output = " T "
+    #         else:
+    #             output = " o "
+    #
+    #         if x == 0:
+    #             output = output.lstrip()
+    #         if x == self.shape[1] - 1:
+    #             output = output.rstrip()
+    #
+    #         outfile.write(output)
+    #
+    #         if x == self.shape[1] - 1:
+    #             outfile.write("\n")
+    #
+    #         it.iternext()
 
 
 
@@ -199,3 +199,12 @@ class GridworldEnv(discrete.DiscreteEnv): #
         #         P[s][LEFT] = [(1.0, ns_left, reward, is_done(ns_left))]
 
             # it.iternext()
+
+if __name__ == "__main__":
+    env = GridworldEnv()
+    state = env.reset()
+    action_sequence = [3,3,0,0,0]
+    print("State", state)
+    for a in action_sequence:
+        state, reward, is_done, _ = env.step(a)
+        print("Action", a, "State", state, "reward", reward, "is done", is_done)
