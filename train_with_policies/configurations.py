@@ -1,13 +1,13 @@
 
 DISCOUNT_FACTORS = [0.99] # 0.90, 0.95,
-LEARNING_RATES = [0.0001] #  0.0001, 0.001, 0.01
-SEEDS = [42] # i for i in range(50, 55)
+LEARNING_RATES = [0.1] #  0.0001, 0.001, 0.01
+SEEDS = [i for i in range(50, 55)] # i for i in range(50, 55)
 ENVIRONMENTS = ["GridWorld"]  # Options: "GridWorld", "CartPole-v1"
 POLICIES = ["gpomdp", "reinforce", "normalized_gpomdp"]  # Options: "gpomdp", "reinforce", "normalized_gpomdp"
 
-NUM_EPISODES = 10 #800
+NUM_EPISODES = 200
 HIDDEN_LAYERS = 128
-SAMPLING_FREQ = 2 #100
+SAMPLING_FREQ = 20
 
 def grid_search_configurations():
     for env in ENVIRONMENTS:
