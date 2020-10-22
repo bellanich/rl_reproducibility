@@ -175,6 +175,8 @@ def run_episodes_policy_gradient(policy, env, config):
     policy.train()
     best_reward = -float('inf')
     best_episode = -1
+
+    # train_loss_function = compute_gpomdp_loss if config["train_with_policie"] == False else
     for i in range(config["num_episodes"]):
 
         episode = sample_episode(env, policy, config['device'])
@@ -224,13 +226,14 @@ def run_episodes_policy_gradient(policy, env, config):
                                                                                             config["learning_rate"],
                                                                                             config["discount_factor"],
                                                                                             config["sampling_freq"])
-                gradients_path = os.path.join('outputs', 'policy_gradients', policy_name, policy_description)
+                gradients_path = os.path.join('train_with_baseline_gpomdp','outputs', 'policy_gradients', policy_name, policy_description)
                 initialize_dirs(dir_paths=[gradients_path])
                 np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
 
     # Saving results.
     # First, save rewards and losses associated with different policies.
-    save_paths = [os.path.join('outputs', 'rewards'), os.path.join('outputs', 'losses')]
+    save_paths = [os.path.join('train_with_baseline_gpomdp', 'outputs', 'rewards'),
+                  os.path.join('train_with_baseline_gpomdp', 'outputs', 'losses')]
     initialize_dirs(dir_paths=save_paths)
     my_results = [val_rewards, val_losses]
     filename = "seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
@@ -243,7 +246,7 @@ def run_episodes_policy_gradient(policy, env, config):
         np.savez_compressed(os.path.join(save_dir, f"{filename}_rewards"), my_dict)
 
     # Then save model performance.
-    model_performance_path = os.path.join('outputs', 'model_performance')
+    model_performance_path = os.path.join('train_with_baseline_gpomdp', 'outputs', 'model_performance')
     initialize_dirs(dir_paths=[model_performance_path])
     model_performance = (model_rewards, model_losses)
     np.save(os.path.join(model_performance_path, filename), model_performance)
