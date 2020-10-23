@@ -3,9 +3,6 @@ import numpy as np
 from collections import namedtuple, defaultdict
 
 
-HIDDEN_LAYERS = 128
-
-
 def load_reward_files(root):
     '''Load all reward arrays into a dictionary with configurations as keys.
     Identical configurations with different seeds are appended under the same
@@ -16,8 +13,6 @@ def load_reward_files(root):
                                           "policy",
                                           "learning_rate",
                                           "discount_factor",
-                                          "hidden_layer",
-                                          "sampling_freq",
                                           "baseline"])
     config2rewards = defaultdict(list)
 
@@ -32,26 +27,28 @@ def load_reward_files(root):
             filename.remove('baseline')
 
         npz = np.load(rewards_file.path, allow_pickle=True)
-        print(len(npz.files))
-        values = npz[npz.files[0]].item()
-        print(values)
-        print(type(values))
-        continue
-        config = Configuration(
-            environment=     filename[1],
-            policy=          None,
-            learning_rate=   float(filename[7]),
-            discount_factor= float(filename[9]),
-            hidden_layer=    HIDDEN_LAYERS,
-            sampling_freq=   int(filename[12]),
-            baseline=        filename[1]
-        )
+        policy2reward = npz[npz.files[0]].item()
+        print(filename)
 
-        reward = []
+        for policy, reward in policy2reward.items():
 
-        config2rewards[config].append(reward)
+            baseline = None
+            if 'baseline' in policy:
+                baseline = 'baseline'
+
+            config = Configuration(
+                environment=     filename[1],
+                policy=          policy,
+                learning_rate=   float(filename[5]),
+                discount_factor= float(filename[8]),
+                baseline=        baseline
+            )
+
+            config2rewards[config].append(reward)
 
     return config2rewards
 
+
 root = os.path.join('..', 'outputs', 'rewards')
-load_reward_files(root)
+config2reward = load_reward_files(root)
+print(config2reward)

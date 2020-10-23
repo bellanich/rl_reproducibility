@@ -5,7 +5,7 @@ SEEDS = [42] # i for i in range(50, 55)
 ENVIRONMENTS = ["GridWorld"]  # Options: "GridWorld", "CartPole-v1"
 POLICIES = ["gpomdp", "reinforce", "normalized_gpomdp"]  # Options: "gpomdp", "reinforce", "normalized_gpomdp"
 
-NUM_EPISODES = 10 #800
+NUM_EPISODES = 5 #800
 HIDDEN_LAYERS = 128
 SAMPLING_FREQ = 2 #100
 
