@@ -19,15 +19,11 @@ def tqdm(*args, **kwargs):
 # Reminder to activate mini-environment
 assert sys.version_info[:3] >= (3, 6, 0), "Make sure you have Python 3.6 installed!"
 
-# Setting up files.
-# Directories to save output files in.
-figures_path, models_path = os.path.join('train_with_policies', 'outputs', 'figures'), \
-                            os.path.join('train_with_policies', 'outputs', 'models')
-initialize_dirs(dir_paths=[figures_path, models_path])
+
 
 # Check if gpu is available.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-timing_filepath = os.path.join('train_with_policies', 'outputs', f'timing_seed_{SEEDS[0]}_{SEEDS[-1]}.csv')
+timing_filepath = os.path.join(f'timing_seed_{SEEDS[0]}_{SEEDS[-1]}.csv')
 with open(timing_filepath, 'w') as t_file:
     t_file.write('policy,baseline,environment,seed,learning_rate,'
                  + 'discount_factor,sampling_freq,episode_time,total_time\n')
@@ -39,6 +35,17 @@ for config in grid_search_configurations():
     # Make environment.
     env_name = config["environment"]
     env = gym.make(env_name) if env_name!= 'GridWorld' else GridworldEnv(shape=[5,5])
+
+    # Setting up files.
+    # Directories to save output files in.
+    i = env_name.find('-')
+    save_env_name = env_name
+    if i > -1:
+        save_env_name = env_name[:i]
+    figures_path, models_path = os.path.join('outputs_' + save_env_name, 'figures'), \
+                                os.path.join('outputs_' + save_env_name, 'models')
+    initialize_dirs(dir_paths=[figures_path, models_path])
+
     config['device'] = device
 
     print("Initializing the network for configuration:")
@@ -113,8 +120,8 @@ for config in grid_search_configurations():
         t_file.write(','.join(time_data) + '\n')
 
     # Save the losses and rewards
-    save_paths = [os.path.join('train_with_policies', 'outputs', 'rewards'),
-                  os.path.join('train_with_policies', 'outputs', 'losses')]
+    save_paths = [os.path.join('outputs_' + save_env_name, 'rewards'),
+                  os.path.join('outputs_' + save_env_name, 'losses')]
     my_results = [rewards_dict, losses_dict]
     filename = "seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
                                                                             config["seed"],

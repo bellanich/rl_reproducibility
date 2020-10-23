@@ -1,3 +1,8 @@
+""" This is a script to show the rewards different policies accumulated during
+evaluation.\n
+
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -6,16 +11,26 @@ import os, sys, glob
 from collections import namedtuple, defaultdict
 sns.set()
 
-SAMPLING_FREQ = 20
-COLOURS = {
+
+# These globals determine for which run the saved rewards are put into graphs.
+ENVIRONMENT = "GridWorld"  # use either Gridworld or CartPole
+TRAINING_MODEL = "baseline_gpomdp"  # use either baseline_gpomdp or policies
+# These are the actual paths were results are obtained and saved.
+ROOT = os.path.join('..', 'train_with_' + TRAINING_MODEL,
+                    'outputs_' + ENVIRONMENT, 'rewards')
+SAVE_PATH = os.path.join('..', 'train_with_' + TRAINING_MODEL,
+                         'outputs_' + ENVIRONMENT, 'figures')
+
+
+# These are ot the globals you're looking for
+SAMPLING_FREQ = 20  # This rescales the x-axis.
+COLOURS = {  # Determine which colours are used for which policies.
     'reinforce': 'r',
     'gpomdp': 'b',
     'gpomdp_baseline': 'g'
 }
 
-"""
-Small script to generate learning curves from best training runs.
-"""
+
 
 # Smoothing function for nicer plots
 def smooth(x, N):
@@ -101,9 +116,8 @@ def pad_rewards_to_array(config2rewards):
     return config2rewards
 
 
-root = os.path.join('..', 'outputs_CartPole', 'rewards')
-save_path = os.path.join('..', 'outputs_CartPole', 'figures',
-                         'cumulative_rewards', 'averaged_over_seed')
+root = ROOT
+save_path = SAVE_PATH
 if not os.path.exists(save_path):
     os.makedirs(save_path)
 config2rewards = load_reward_files(root)

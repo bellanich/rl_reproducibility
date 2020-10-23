@@ -170,7 +170,11 @@ def run_episodes_policy_gradient(policy, env, config):
     loss_function = compute_reinforce_loss if "reinforce" in policy_name else compute_gpomdp_loss
     config['baseline'] = 'normalized_baseline' if 'normalized' in policy_name else None
 
-
+    env_name = config['environment']
+    i = env_name.find('-')
+    save_env_name = env_name
+    if i > -1:
+        save_env_name = env_name[:i]
 
     # With the way the code is implemented, we only care about val reward and val losses for now.
     val_rewards = []
@@ -230,14 +234,14 @@ def run_episodes_policy_gradient(policy, env, config):
                                                                                         config["learning_rate"],
                                                                                         config["discount_factor"],
                                                                                         config["sampling_freq"])
-            gradients_path = os.path.join('train_with_policies', 'outputs', 'policy_gradients', policy_name, policy_description)
+            gradients_path = os.path.join('outputs_' + save_env_name, 'policy_gradients', policy_name, policy_description)
             initialize_dirs(dir_paths=[gradients_path])
             np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
 
     # Saving results.
     # First, save rewards and losses associated with different policies.
-    save_paths = [os.path.join('train_with_policies', 'outputs', 'rewards'),
-                  os.path.join('train_with_policies', 'outputs', 'losses')]
+    save_paths = [os.path.join('outputs_' + save_env_name, 'rewards'),
+                  os.path.join('outputs_' + save_env_name, 'losses')]
     initialize_dirs(dir_paths=save_paths)
     filename = "seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
                                                                              config["seed"],
@@ -246,7 +250,7 @@ def run_episodes_policy_gradient(policy, env, config):
                                                                              config["sampling_freq"])
 
     # Then save model performance.
-    model_performance_path = os.path.join('train_with_policies', 'outputs', 'model_performance')
+    model_performance_path = os.path.join('outputs_' + save_env_name, 'model_performance')
     initialize_dirs(dir_paths=[model_performance_path])
     model_performance = (model_rewards, model_losses)
     np.save(os.path.join(model_performance_path, filename), model_performance)

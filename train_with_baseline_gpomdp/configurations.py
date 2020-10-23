@@ -2,7 +2,7 @@
 DISCOUNT_FACTORS = [0.99] # 0.90, 0.95,
 LEARNING_RATES = [0.0001] #  0.0001, 0.001, 0.01
 SEEDS = [42] # i for i in range(50, 55)
-ENVIRONMENTS = ["GridWorld"]  # Options: "GridWorld", "CartPole-v1"
+ENVIRONMENTS = ["GridWorld", "CartPole-v1"]  # Options: "GridWorld", "CartPole-v1"
 POLICIES = ["gpomdp", "reinforce", "normalized_gpomdp"]  # Options: "gpomdp", "reinforce", "normalized_gpomdp"
 
 NUM_EPISODES = 5 #800
