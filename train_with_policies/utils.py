@@ -4,13 +4,15 @@ main script.
 """
 
 import torch
+import torch.nn.functional as F
 from torch import optim
 import numpy as np
 import sys
+sys.path.append('..')
 import os
 
 # The number of episodes a model is evaluated for calculating the gradients.
-EP_DURING_EVAL = 150
+EP_DURING_EVAL = 100
 # The number of episodes after which a model will stop training if no better
 # reward was found.
 CONVERGENCE_THRESHOLD = 2000
@@ -47,7 +49,7 @@ def sample_episode(env, policy, device):
     state = env.reset()
     while not done:
         # Get action using policy.
-        action = policy.sample_action(torch.Tensor(state).to(device))  # .item()
+        action = policy.sample_action(torch.Tensor(state).to(device)) #.item()
         next_state, reward, done, _ = env.step(action)
         # Append to lists
         states.append(state), actions.append(action), rewards.append(reward), dones.append(done)
@@ -57,9 +59,20 @@ def sample_episode(env, policy, device):
     states, actions, rewards = torch.Tensor(states).to(device), \
                                torch.LongTensor(actions).unsqueeze(dim=1).to(device), \
                                torch.Tensor(rewards).unsqueeze(dim=1).to(device)
-
     dones = torch.Tensor(dones).unsqueeze(dim=1).to(device)
     return states, actions, rewards, dones
+
+
+def initialize_dirs(dir_paths):
+    """
+    Baby function that initializes dir if it doesn't already exist.
+    :param dir_paths:
+    :return:
+    """
+    for save_folder in dir_paths:
+        # Create folder if it doesn't exist.
+        if not os.path.exists(save_folder):
+            os.makedirs(save_folder)
 
 
 def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=None):
@@ -74,7 +87,7 @@ def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=No
     """
     # Same as gpomdp function, only there's a slight difference in loss equation.
     states, actions, rewards, _ = episode
-    rewards = rewards.squeeze()
+    rewards = rewards.squeeze(dim=-1)
     G = torch.zeros_like(rewards).to(device)
     for t in reversed(range(rewards.shape[0])):
         G[t] = rewards[t] + ((discount_factor * G[t + 1]) if t + 1 < rewards.shape[0] else 0)
@@ -82,11 +95,6 @@ def compute_reinforce_loss(policy, episode, discount_factor, device, baseline=No
     # Also called "whitening" the gradients.
     if baseline == "normalized_baseline":
         G = (G - G.mean()) / G.std()
-
-    # Use random policy as baseline.
-    if baseline == "random_baseline":
-        print("Save G for untrained model and subtract from G calculated above.")
-        raise NotImplementedError
 
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
     loss = - (action_probs * G[0]).sum()
@@ -107,7 +115,7 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
     states, actions, rewards, _ = episode
 
     # Calculate rewards.
-    rewards = rewards.squeeze()
+    rewards = rewards.squeeze(dim=-1)
     G = torch.zeros_like(rewards).to(device)
     # Need to calculate loss using formula G_{t+1} = r_t + \gamma G_{t+1}. If statement makes sure that there isn't
     # an error when t=0. Otherwise, we'd get an error since there's no negative time step.
@@ -116,12 +124,8 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
 
     # Also called "whitening" the gradients.
     if baseline == "normalized_baseline":
-        G = (G - G.mean()) / G.std()
-
-    # Use random policy as baseline.
-    if baseline == "random_baseline":
-        print("Save G for untrained model and subtract from G calculated above.")
-        raise NotImplementedError
+        epsilon = 1e-5
+        G = (G - G.mean()) /(G.std() + epsilon)
 
     # Calculate loss.
     action_probs = torch.log(policy.get_probs(states, actions)).squeeze()
@@ -132,15 +136,16 @@ def compute_gpomdp_loss(policy, episode, discount_factor, device, baseline=None)
 def eval_policy(policy, env, config, loss_function):
 
     # Return gradients per episode
-    episode_gradients, losses = dict(), list()
+    episode_gradients, losses, rewards_list = dict(), list(), list()
+
     for _ in range(EP_DURING_EVAL):
         episode = sample_episode(env, policy, config['device'])
         policy.zero_grad()  # We need to reset the optimizer gradients for each new run.
-        loss, _ = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
+        loss, cum_reward = loss_function(policy, episode, config["discount_factor"], config['device'], config["baseline"])
         loss.backward()
 
         # Save losses as a list.
-        losses.append(loss.item())
+        losses.append(loss.item()), rewards_list.append(cum_reward.item())
 
         # Extracting gradients from policy network.
         for name, param in policy.named_parameters():
@@ -149,45 +154,50 @@ def eval_policy(policy, env, config, loss_function):
             episode_gradients[name].append(param.grad.cpu().detach().view(-1))
 
     episode_gradients = {key: torch.stack(episode_gradients[key], dim=0).numpy() for key in episode_gradients}
-    average_loss = np.asarray(losses).mean()
-
-    return episode, average_loss, episode_gradients
+    average_loss, average_cum_reward = np.asarray(losses).mean(), np.asarray(rewards_list).mean()
+    return episode, average_loss, average_cum_reward, episode_gradients
 
 
 def run_episodes_policy_gradient(policy, env, config):
 
-    # Define loss function using policy_name.
-    policy_name = config["policy"]
-    loss_function = compute_reinforce_loss if "reinforce" in policy_name else compute_gpomdp_loss
-    baseline = config["baseline"]
     # This makes sure that gradients get saved under different name if baseline is used.
-    policy_name = "{}_{}".format(policy_name, baseline) if baseline is not None else policy_name
+    # policy_name = "{}_{}".format(policy_name, baseline) if baseline is not None else policy_name
 
     # Setting up for training.
     optimizer = optim.Adam(policy.parameters(), config["learning_rate"])
-    rewards, losses = list(), list()
-    policy_description = "{}_baseline_{}_{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["policy"],
-                                                                                config["baseline"],
-                                                                                config["environment"].replace('-', '_'),
-                                                                                config["seed"],
-                                                                                config["learning_rate"],
-                                                                                config["discount_factor"],
-                                                                                config["sampling_freq"])
+    policy_name = config["policy"]
+    # Define loss function based on policy that we train + validate with.
+    loss_function = compute_reinforce_loss if "reinforce" in policy_name else compute_gpomdp_loss
+    config['baseline'] = 'normalized_baseline' if 'normalized' in policy_name else None
+
+    env_name = config['environment']
+    i = env_name.find('-')
+    save_env_name = env_name
+    if i > -1:
+        save_env_name = env_name[:i]
+
+    # With the way the code is implemented, we only care about val reward and val losses for now.
+    val_rewards = []
+    val_losses = []
+
+    # Save training rewards/losses (gpomdp + whitening) only. Save if needed for debugging to or writing report.
+    model_rewards, model_losses = list(), list()
 
     policy.train()
     best_reward = -float('inf')
     best_episode = -1
+
+    # train_loss_function = compute_gpomdp_loss if config["train_with_policie"] == False else
     for i in range(config["num_episodes"]):
 
         episode = sample_episode(env, policy, config['device'])
         optimizer.zero_grad()  # We need to reset the optimizer gradients for each new run.
         # With the way it's currently coded, we need the same input and outputs for this to work.
-        loss, cum_reward = loss_function(policy, episode, config["discount_factor"], config['device'], baseline)
+        loss, cum_reward = loss_function(policy, episode, config["discount_factor"], config['device'],
+                                               baseline='normalized_baseline')
+        model_rewards.append(cum_reward.item()), model_losses.append(loss.item())
         loss.backward()
         optimizer.step()
-
-        rewards.append(float(cum_reward))
-        losses.append(float(loss))
 
         if cum_reward > best_reward:
             best_reward = cum_reward
@@ -198,18 +208,50 @@ def run_episodes_policy_gradient(policy, env, config):
 
         # Validating (or "freezing" training of the model).
         if i % config["sampling_freq"] == 0:
-            # Calling separate function to do validation. No gradients are taken, and
-            episode, avg_loss, current_gradients = eval_policy(policy, env, config, loss_function)
+
+            # Define loss function by the policy.
+
+
+            episode, avg_loss, cum_reward, current_gradients = eval_policy(policy, env, config, loss_function)
+
+            # Save average cum_reward and loss per validation run.
+            # Note cum_reward := average cum_reward observed over N runs during validation. Just renamed cum_rewards
+            #  so it fits nicely with rest of code.
+            val_rewards.append(cum_reward)
+            val_losses.append(avg_loss)
 
             # Printing something just so we know what's going on.
-            print("{2} Episode {0} had an average loss of {1} "
-                  .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m'))
+            print("Episode {0} {3} had an average loss of {1} and lasted for {2} steps. The cumulative reward is {4}"
+                  .format(i, round(avg_loss, 4), len(episode[0]), policy_name.upper(), cum_reward))
+            # print("{2} Episode {0} had an average loss of {1}"
+            #       .format(i, avg_loss, '\033[92m' if len(episode[0]) >= 195 else '\033[99m', policy_name))
 
             # Saving policy gradients per 'validation' iteration.
-            gradients_path = os.path.join('outputs', 'policy_gradients', policy_name, policy_description)
-            # Create dir if doesn't already exist.
-            if not os.path.exists(gradients_path):
-                os.makedirs(gradients_path)
+            policy_description = "{}_seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(policy_name,
+                                                                                        config["baseline"],
+                                                                                        config["environment"].replace('-', '_'),
+                                                                                        config["seed"],
+                                                                                        config["learning_rate"],
+                                                                                        config["discount_factor"],
+                                                                                        config["sampling_freq"])
+            gradients_path = os.path.join('outputs_' + save_env_name, 'policy_gradients', policy_name, policy_description)
+            initialize_dirs(dir_paths=[gradients_path])
             np.savez_compressed(os.path.join(gradients_path, "timestep_{}_gradients".format(i)), current_gradients)
 
-    return rewards, losses
+    # Saving results.
+    # First, save rewards and losses associated with different policies.
+    save_paths = [os.path.join('outputs_' + save_env_name, 'rewards'),
+                  os.path.join('outputs_' + save_env_name, 'losses')]
+    initialize_dirs(dir_paths=save_paths)
+    filename = "seed_{}_lr_{}_discount_{}_sampling_freq_{}".format(config["environment"].replace('-', '_'),
+                                                                             config["seed"],
+                                                                             config["learning_rate"],
+                                                                             config["discount_factor"],
+                                                                             config["sampling_freq"])
+
+    # Then save model performance.
+    model_performance_path = os.path.join('outputs_' + save_env_name, 'model_performance')
+    initialize_dirs(dir_paths=[model_performance_path])
+    model_performance = (model_rewards, model_losses)
+    np.save(os.path.join(model_performance_path, filename), model_performance)
+    return val_rewards, val_losses, model_performance
