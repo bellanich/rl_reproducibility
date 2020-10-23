@@ -6,7 +6,6 @@ ENVIRONMENTS = ["GridWorld", "CartPole-v1"]  # Options: "GridWorld", "CartPole-v
 POLICIES = ["gpomdp", "reinforce", "normalized_gpomdp"]  # Options: "gpomdp", "reinforce", "normalized_gpomdp"
 
 NUM_EPISODES = 5 #800
-HIDDEN_LAYERS = 128
 SAMPLING_FREQ = 2 #100
 
 def grid_search_configurations():
@@ -24,7 +23,7 @@ def grid_search_configurations():
                             "discount_factor" : df,
                             "seed" : seed,
                             "num_episodes" : NUM_EPISODES,
-                            "hidden_layer" : HIDDEN_LAYERS,
+                            "hidden_layer" : 128,  # Do not alter the size of the hidden layer.
                             "sampling_freq": SAMPLING_FREQ,
                             # Model now only trains using best policy, but validates on different policies. Otherwise
                             #  all our results will be random, since the model hasn't learned anything.
